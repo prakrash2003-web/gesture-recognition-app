@@ -1,0 +1,15 @@
+# Normalize line endings: store as LF in the repo, check out native on each OS.
+# Prevents "whole file changed" noise when moving between Windows and Linux.
+* text=auto eol=lf
+
+# Treat these as binary (never touch their bytes)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pkl binary
+*.onnx binary
+*.tflite binary
+*.mp4 binary
+*.webm binary
