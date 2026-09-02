@@ -1,0 +1,7 @@
+# GestureFlow backend - runtime dependencies.
+# These are the packages the server needs in order to run (in development AND production).
+# Versions are pinned exactly with "==" so every machine and the deploy server
+# install an identical set. See requirements-dev.txt for test/lint-only tools.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
