@@ -81,3 +81,39 @@ extra learning cost is smaller now than a later migration.
 **Why:** OneDrive syncs every file it sees, including the tens of thousands of files in
 `node_modules` and `.venv`. That is slow and occasionally locks a file mid-write, causing spurious
 permission errors. Version history is handled by Git/GitHub instead, which is change-aware.
+
+---
+
+## 6. Which MediaPipe API for hand landmarks?
+
+**Decision:** the classic **`mediapipe.solutions.hands`** API, `model_complexity=0` (the "lite"
+model), `static_image_mode=False`.
+
+**Why:**
+- The model is bundled inside the `mediapipe` package, so local dev, CI, and the Docker image need
+  no separate model download or storage.
+- `static_image_mode=False` tracks the hand between frames instead of re-detecting every frame,
+  which is faster on a live stream.
+- `model_complexity=0` is accurate enough for six coarse gestures and noticeably faster per frame.
+
+**Alternative considered:** the newer **MediaPipe Tasks** API (`HandLandmarker`). It is the
+forward-looking option and supports proper video/live-stream timestamps, but it requires shipping and
+version-managing a `hand_landmarker.task` file alongside the code. Not worth the operational overhead
+for this project; revisit if the solutions API is removed in a future release.
+
+---
+
+## 7. How the rule-based classifier actually decides
+
+Pipeline: `normalize` (translate to wrist, scale by hand size — **no rotation**, so "up" in the
+image keeps its meaning) -> `fingers` (each finger "extended" if its tip is farther from the wrist
+than its PIP joint; the thumb instead needs both its joints near-straight) -> `classifier_rules`
+(score the 5-finger pattern against a template per gesture, then apply one geometric check each:
+thumbs-up needs the thumb to be the highest point, OK sign needs the thumb/index tips touching).
+
+Temporal smoothing (`smoothing`) then takes a majority vote over the last ~6 predictions and only
+switches gesture after a new one has held for 2 frames, which removes single-frame flicker.
+
+**Testing:** synthetic 21-point hands (built from per-finger flags) drive the unit tests, so they run
+with no camera and no MediaPipe call. Real-hand behaviour is validated with the webcam in Phase 5;
+`backend/scripts/record_fixtures.py` captures real samples.

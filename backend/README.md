@@ -6,7 +6,9 @@ gesture, and streams results back.
 
 ## Status
 
-**Phase 1 complete** — FastAPI skeleton with the plain HTTP endpoints and a test suite.
+**Phase 2 complete** — HTTP endpoints + the offline computer-vision pipeline
+(decode → landmarks → normalize → finger analysis → rule-based classifier → smoothing).
+The WebSocket that streams frames through this pipeline arrives in Phase 3.
 
 | Endpoint | Method | Purpose |
 |---|---|---|
@@ -25,11 +27,22 @@ backend/
 │   ├── routes.py        GET /, /health, /gestures
 │   ├── schemas.py       Pydantic response models
 │   ├── gestures.py      the canonical gesture list
-│   └── vision/          (Phase 2) OpenCV decode, MediaPipe landmarks, classifier, smoothing
+│   └── vision/          the CV pipeline (see below)
+│       ├── decode.py         JPEG bytes -> image array (OpenCV)
+│       ├── landmarks.py      image -> 21 hand points (MediaPipe)
+│       ├── normalize.py      position/scale-independent landmarks
+│       ├── geometry.py       distance / angle helpers
+│       ├── fingers.py        per-finger extended/curled detection
+│       ├── classifier_rules.py   finger pattern + geometry -> gesture
+│       ├── smoothing.py      majority vote over recent frames
+│       ├── pipeline.py       ties the stages together (used by the WebSocket)
+│       └── types.py          dataclasses passed between stages
+├── scripts/            developer utilities (record_fixtures.py: capture real landmarks)
 ├── ml/                  (Phase 7) data-collection + training scripts
-├── tests/               pytest suite
+├── tests/               pytest suite (synthetic hands; no camera needed)
 │   ├── conftest.py      shared fixtures (the TestClient)
-│   └── test_routes.py
+│   ├── fixtures/        synthetic 21-point hands
+│   └── test_*.py
 ├── requirements.txt      runtime dependencies
 ├── requirements-dev.txt  + test/lint tools
 ├── pyproject.toml        ruff + pytest configuration

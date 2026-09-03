@@ -32,6 +32,12 @@ coverage/
 Thumbs.db
 desktop.ini
 
+# ---------- ML data / models (Phase 7) ----------
+# Raw webcam captures from scripts/record_fixtures.py. The curated training
+# dataset that is actually committed will be added deliberately in Phase 7.
+backend/ml/data/
+*.joblib
+
 # ---------- Build / misc ----------
 *.log
 *.tmp

@@ -5,3 +5,8 @@
 
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
+
+# Computer vision (Phase 2+). mediapipe pulls in opencv-contrib-python==4.11.0.86
+# (imported as cv2) and constrains numpy to the 1.26 line.
+mediapipe==0.10.21
+numpy==1.26.4
