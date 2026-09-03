@@ -117,3 +117,23 @@ switches gesture after a new one has held for 2 frames, which removes single-fra
 **Testing:** synthetic 21-point hands (built from per-finger flags) drive the unit tests, so they run
 with no camera and no MediaPipe call. Real-hand behaviour is validated with the webcam in Phase 5;
 `backend/scripts/record_fixtures.py` captures real samples.
+
+---
+
+## 8. WebSocket connection design: "latest frame wins"
+
+**Decision:** each `/ws` connection runs **two async tasks** sharing a one-slot buffer — a *receiver*
+that keeps only the most recent inbound frame, and a *processor* that runs that frame through the
+pipeline (in a worker thread) and replies. Frames that arrive mid-processing are overwritten, not
+queued.
+
+**Why:**
+- Under load, a queue would grow without bound and every reply would describe an increasingly old
+  hand pose. For a live UI, a 400 ms-stale "thumbs up" is worse than skipping straight to now.
+- Reporting `frames_dropped` gives the frontend a real signal that the client is over-sending, which
+  the UI can use to back off its capture rate.
+- MediaPipe is synchronous and CPU-bound; `run_in_threadpool` keeps it off the event loop so one
+  slow frame (or one busy connection) doesn't stall the server for everyone else.
+
+**Alternative considered:** a bounded `asyncio.Queue`. Simpler to write, but "process everything"
+is the wrong goal here — we explicitly want to *skip* work that's no longer relevant.

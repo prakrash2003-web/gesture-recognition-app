@@ -7,9 +7,9 @@ Roadmap phases 0-10 are described in `docs/decisions.md` and the chat plan.
 |---|---|---|
 | 0 | Repo, venv, tooling, decisions log | done (`fbf82b5`) |
 | 1 | FastAPI skeleton: `/`, `/health`, `/gestures`, tests, CI | done (`2e0c003`) |
-| 2 | Offline CV pipeline: decode → landmarks → normalize → fingers → rule classifier → smoothing | done |
-| 3 | WebSocket `/ws` streaming the pipeline; wire-format Pydantic models | next |
-| 4 | Frontend skeleton: Vite + React + TS + Tailwind, pages, nav, theme | todo |
+| 2 | Offline CV pipeline: decode → landmarks → normalize → fingers → rule classifier → smoothing | done (`c31f505`) |
+| 3 | WebSocket `/ws` streaming the pipeline; wire-format Pydantic models | done |
+| 4 | Frontend skeleton: Vite + React + TS + Tailwind, pages, nav, theme | next |
 | 5 | Connect end-to-end: webcam capture → frame throttle → WS → overlay + gesture card; CORS | todo |
 | 6 | Robustness/UX: permission + error + reconnect states, stats dashboard, gesture history, guide | todo |
 | 7 | ML upgrade: data collection, training, evaluation, confusion matrix, model comparison page | todo |

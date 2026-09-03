@@ -6,6 +6,8 @@ API docs. Defining every shape here in one place keeps them consistent, and lets
 the frontend's TypeScript types (Phase 4) mirror them one-to-one.
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -34,3 +36,47 @@ class GesturesResponse(BaseModel):
 
     count: int
     gestures: list[Gesture]
+
+
+# --- WebSocket (/ws) message shapes --------------------------------------------
+#
+# Unlike the REST routes above, FastAPI does not auto-serialize WebSocket traffic,
+# so we build these models explicitly and send `model.model_dump()`. The `type`
+# field is a discriminator: the frontend switches on it to know which message it
+# received. Keeping the shapes here means the TypeScript types in Phase 4 can
+# match field-for-field.
+
+
+class ReadyMessage(BaseModel):
+    """First message the server sends after the socket opens."""
+
+    type: Literal["ready"] = "ready"
+    gestures: list[Gesture]
+    recommended_fps: int = Field(
+        default=10, description="How many frames per second the client should send."
+    )
+
+
+class FrameResultMessage(BaseModel):
+    """One processed frame's result."""
+
+    type: Literal["result"] = "result"
+    gesture: str | None = Field(description="Gesture id, or null if none recognized.")
+    confidence: float = Field(ge=0.0, le=1.0)
+    hand_present: bool
+    handedness: str | None = Field(description='"Left" / "Right" from the camera view.')
+    landmarks: list[list[float]] | None = Field(
+        description="21 [x, y] points in 0..1 frame coordinates, for drawing the skeleton."
+    )
+    scores: dict[str, float] = Field(description="Per-gesture match score, for debugging/UX.")
+    inference_ms: float = Field(description="Server time spent on this frame.")
+    frames_dropped: int = Field(
+        default=0, description="Frames skipped because a newer one had already arrived."
+    )
+
+
+class ErrorMessage(BaseModel):
+    """A recoverable problem with one frame. The connection stays open."""
+
+    type: Literal["error"] = "error"
+    detail: str

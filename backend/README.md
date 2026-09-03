@@ -6,9 +6,8 @@ gesture, and streams results back.
 
 ## Status
 
-**Phase 2 complete** — HTTP endpoints + the offline computer-vision pipeline
-(decode → landmarks → normalize → finger analysis → rule-based classifier → smoothing).
-The WebSocket that streams frames through this pipeline arrives in Phase 3.
+**Phase 3 complete** — the HTTP endpoints, the offline CV pipeline, and the
+`/ws` WebSocket that streams webcam frames through that pipeline in real time.
 
 | Endpoint | Method | Purpose |
 |---|---|---|
@@ -16,6 +15,23 @@ The WebSocket that streams frames through this pipeline arrives in Phase 3.
 | `/health` | GET | Liveness check (used by the frontend badge and the deploy platform) |
 | `/gestures` | GET | The list of recognizable gestures (single source of truth for the UI) |
 | `/docs` | GET | Auto-generated interactive API documentation (Swagger UI) |
+| `/ws` | WebSocket | Send JPEG frames (binary), receive gesture results (JSON) |
+
+### `/ws` protocol
+
+| Direction | Message |
+|---|---|
+| server → client | `{"type":"ready","gestures":[...],"recommended_fps":10}` once on connect |
+| client → server | raw JPEG bytes (one frame) |
+| client → server | `{"type":"reset"}` to clear smoothing history |
+| server → client | `{"type":"result","gesture":...,"confidence":...,"landmarks":[...],"frames_dropped":N,...}` |
+| server → client | `{"type":"error","detail":...}` (connection stays open) |
+
+Each connection gets its own `GesturePipeline`. Only the newest frame is
+processed; frames that arrive while one is in flight are dropped (`frames_dropped`
+reports how many). MediaPipe runs in a worker thread so it never blocks the server.
+
+Manual check against a live server: `python scripts/ws_smoke.py`.
 
 ## Layout
 
@@ -27,6 +43,7 @@ backend/
 │   ├── routes.py        GET /, /health, /gestures
 │   ├── schemas.py       Pydantic response models
 │   ├── gestures.py      the canonical gesture list
+│   ├── ws.py           the /ws WebSocket endpoint (receive + process loops)
 │   └── vision/          the CV pipeline (see below)
 │       ├── decode.py         JPEG bytes -> image array (OpenCV)
 │       ├── landmarks.py      image -> 21 hand points (MediaPipe)

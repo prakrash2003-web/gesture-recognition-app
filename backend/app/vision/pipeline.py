@@ -65,5 +65,9 @@ class GesturePipeline:
             inference_ms=round((time.perf_counter() - started) * 1000, 2),
         )
 
+    def reset(self) -> None:
+        """Forget the smoothing history (e.g. after the camera was paused)."""
+        self._smoother.reset()
+
     def close(self) -> None:
         self._detector.close()

@@ -12,7 +12,8 @@ Start the server locally, from the backend/ folder, with:
 from fastapi import FastAPI
 
 from app import __version__
-from app.routes import router
+from app.routes import router as rest_router
+from app.ws import router as ws_router
 
 app = FastAPI(
     title="GestureFlow API",
@@ -20,7 +21,8 @@ app = FastAPI(
     summary="Real-time hand gesture recognition backend.",
 )
 
-app.include_router(router)
+app.include_router(rest_router)
+app.include_router(ws_router)
 
 
 @app.get("/", tags=["system"])
