@@ -1,24 +1,32 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { CameraView } from '../components/CameraView'
+import { ConnectionBanner } from '../components/ConnectionBanner'
+import { GestureHistoryTimeline } from '../components/GestureHistoryTimeline'
 import { GesturePanel } from '../components/GesturePanel'
 import { PageContainer } from '../components/PageContainer'
 import { SessionStats } from '../components/SessionStats'
+import { SettingsPanel } from '../components/SettingsPanel'
 import { useGestureSocket } from '../hooks/useGestureSocket'
 import { useGestures } from '../hooks/useGestures'
+import { useSessionRecorder } from '../hooks/useSessionRecorder'
+import { useSettings } from '../hooks/useSettings'
 import { useWebcam } from '../hooks/useWebcam'
-import { createFrameCapturer } from '../lib/frameCapture'
 import { clearCanvas, drawLandmarks } from '../lib/drawLandmarks'
+import { createFrameCapturer } from '../lib/frameCapture'
+import { toSegments } from '../lib/session'
 
 // Orchestrates the live experience:
 //   webcam stream -> capture a frame -> WebSocket -> gesture result -> UI + overlay
 //
-// Each concern lives in its own hook/lib; this component only wires them together
-// and owns the small bits of session state (fps estimate, detection count).
+// Each concern lives in its own hook/lib; this component wires them together and
+// owns the small bits of session state (fps estimate, detection count).
 
 export function LivePage() {
   const { gestures } = useGestures()
   const webcam = useWebcam()
+  const { settings, minConfidence } = useSettings()
+  const { samples, record: recordSample, clear: clearSession } = useSessionRecorder()
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const overlayRef = useRef<HTMLCanvasElement | null>(null)
@@ -32,19 +40,23 @@ export function LivePage() {
     return video ? capturerRef.current.capture(video) : Promise.resolve(null)
   }, [])
 
-  const { status: socketStatus, lastResult, lastError, sendReset } = useGestureSocket({
-    enabled: active,
-    captureFrame,
-  })
+  const { status: socketStatus, lastResult, lastError, reconnectAttempt, sendReset } =
+    useGestureSocket({
+      enabled: active,
+      captureFrame,
+      targetFps: settings.targetFps,
+      minConfidence,
+    })
 
-  // --- session metrics -------------------------------------------------------
+  // --- session metrics -----------------------------------------------------
   const frameTimesRef = useRef<number[]>([])
   const prevGestureRef = useRef<string | null>(null)
   const [fps, setFps] = useState(0)
   const [detections, setDetections] = useState(0)
 
   useEffect(() => {
-    if (!lastResult) return
+    if (!lastResult || !active) return
+    recordSample(lastResult)
 
     const now = performance.now()
     const times = frameTimesRef.current
@@ -55,9 +67,9 @@ export function LivePage() {
     const g = lastResult.gesture
     if (g && g !== prevGestureRef.current) setDetections((n) => n + 1)
     if (g) prevGestureRef.current = g
-  }, [lastResult])
+  }, [lastResult, active, recordSample])
 
-  // --- skeleton overlay ----------------------------------------------------
+  // --- skeleton overlay --------------------------------------------------
   useEffect(() => {
     const canvas = overlayRef.current
     if (!canvas) return
@@ -69,31 +81,44 @@ export function LivePage() {
       canvas.height = canvas.clientHeight
     }
 
-    if (active && lastResult?.landmarks) {
+    if (active && settings.showOverlay && lastResult?.landmarks) {
       drawLandmarks(ctx, lastResult.landmarks)
     } else {
       clearCanvas(ctx)
     }
-  }, [lastResult, active])
+  }, [lastResult, active, settings.showOverlay])
+
+  // --- "backend waking up" hint --------------------------------------------
+  const [slowConnect, setSlowConnect] = useState(false)
+  useEffect(() => {
+    if (socketStatus !== 'connecting') return
+    const timer = setTimeout(() => setSlowConnect(true), 4000)
+    return () => {
+      clearTimeout(timer)
+      setSlowConnect(false)
+    }
+  }, [socketStatus])
 
   const reset = useCallback(() => {
     frameTimesRef.current = []
     prevGestureRef.current = null
     setDetections(0)
     setFps(0)
+    clearSession()
     sendReset()
-  }, [sendReset])
+  }, [clearSession, sendReset])
 
-  function handleToggle() {
-    if (running) {
-      setRunning(false)
-      webcam.stop()
-      reset()
-    } else {
-      setRunning(true)
-      void webcam.start()
-    }
-  }
+  const stop = useCallback(() => {
+    setRunning(false)
+    webcam.stop()
+  }, [webcam])
+
+  const start = useCallback(() => {
+    setRunning(true)
+    void webcam.start()
+  }, [webcam])
+
+  const segments = useMemo(() => toSegments(samples), [samples])
 
   return (
     <PageContainer
@@ -102,17 +127,29 @@ export function LivePage() {
     >
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="space-y-4">
+          <ConnectionBanner
+            status={running ? socketStatus : 'idle'}
+            reconnectAttempt={reconnectAttempt}
+            slowConnect={slowConnect}
+            onRetry={() => {
+              stop()
+              setTimeout(start, 150)
+            }}
+          />
+
           <CameraView
             videoRef={videoRef}
             overlayRef={overlayRef}
             stream={webcam.stream}
             status={webcam.status}
             errorDetail={webcam.errorDetail}
+            mirrored={settings.mirror}
           />
+
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={handleToggle}
+              onClick={running ? stop : start}
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
             >
               {running ? 'Stop' : 'Start'}
@@ -125,10 +162,22 @@ export function LivePage() {
             >
               Reset
             </button>
-            {lastError && socketStatus !== 'live' && (
-              <span className="text-sm text-rose-600 dark:text-rose-400">{lastError}</span>
+            <div className="ml-auto">
+              <SettingsPanel />
+            </div>
+            {webcam.status === 'denied' && (
+              <button
+                type="button"
+                onClick={() => void webcam.start()}
+                className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+              >
+                Retry camera access
+              </button>
             )}
           </div>
+          {lastError && socketStatus === 'error' && (
+            <p className="text-sm text-rose-600 dark:text-rose-400">{lastError}</p>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -139,7 +188,9 @@ export function LivePage() {
             latencyMs={lastResult?.inference_ms ?? null}
             framesDropped={lastResult?.frames_dropped ?? 0}
             detections={detections}
+            reconnectAttempt={reconnectAttempt}
           />
+          <GestureHistoryTimeline segments={segments} gestures={gestures} limit={6} />
         </div>
       </div>
     </PageContainer>

@@ -49,4 +49,23 @@
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-brand-500;
   }
+
+  /* Respect the OS "reduce motion" setting everywhere. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+/* Keyboard-only "skip to content" link. */
+.skip-link {
+  @apply sr-only;
+}
+.skip-link:focus {
+  @apply not-sr-only fixed left-4 top-4 z-50 rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white;
 }

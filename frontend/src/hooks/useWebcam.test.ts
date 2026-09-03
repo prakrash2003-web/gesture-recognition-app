@@ -10,8 +10,11 @@ function setGetUserMedia(impl: ((c: MediaStreamConstraints) => Promise<MediaStre
 }
 
 function fakeStream() {
-  const track = { stop: vi.fn(), kind: 'video' }
-  return { getTracks: () => [track] } as unknown as MediaStream
+  const track = { stop: vi.fn(), kind: 'video', addEventListener: vi.fn() }
+  return {
+    getTracks: () => [track],
+    getVideoTracks: () => [track],
+  } as unknown as MediaStream
 }
 
 afterEach(() => {

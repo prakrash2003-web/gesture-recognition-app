@@ -154,6 +154,36 @@ describe('useGestureSocket', () => {
     expect(MockWebSocket.instances.length).toBeGreaterThan(1)
   })
 
+  it('sends a config message with the threshold after ready', () => {
+    renderHook(() =>
+      useGestureSocket({ enabled: true, captureFrame: capture, minConfidence: 0.6 }),
+    )
+    act(() => {
+      MockWebSocket.latest().simulateOpen()
+      MockWebSocket.latest().simulateMessage(READY)
+    })
+    const configs = MockWebSocket.latest()
+      .sent.filter((m): m is string => typeof m === 'string')
+      .map((m) => JSON.parse(m))
+    expect(configs).toContainEqual({ type: 'config', min_confidence: 0.6 })
+  })
+
+  it('pushes a new threshold to an open socket when minConfidence changes', () => {
+    const { rerender } = renderHook(
+      ({ mc }) => useGestureSocket({ enabled: true, captureFrame: capture, minConfidence: mc }),
+      { initialProps: { mc: 0.6 } },
+    )
+    act(() => {
+      MockWebSocket.latest().simulateOpen()
+      MockWebSocket.latest().simulateMessage(READY)
+    })
+    rerender({ mc: 0.8 })
+    const configs = MockWebSocket.latest()
+      .sent.filter((m): m is string => typeof m === 'string')
+      .map((m) => JSON.parse(m))
+    expect(configs).toContainEqual({ type: 'config', min_confidence: 0.8 })
+  })
+
   it('closes the socket when disabled', async () => {
     const { result, rerender } = renderHook(
       ({ enabled }) => useGestureSocket({ enabled, captureFrame: capture }),

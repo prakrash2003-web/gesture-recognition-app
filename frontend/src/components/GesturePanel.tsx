@@ -38,13 +38,14 @@ export function GesturePanel({ result, gestures }: GesturePanelProps) {
           {emoji}
         </span>
         <div className="min-w-0">
-          <p className="truncate text-2xl font-semibold text-slate-900 dark:text-white">
+          <p
+            className="truncate text-2xl font-semibold text-slate-900 dark:text-white"
+            aria-live="polite"
+          >
             {headline}
           </p>
           {match && (
-            <p className="text-sm text-slate-500" aria-live="polite">
-              {confidencePct}% confidence
-            </p>
+            <p className="text-sm text-slate-500">{confidencePct}% confidence</p>
           )}
         </div>
       </div>

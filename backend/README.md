@@ -24,6 +24,7 @@ gesture, and streams results back.
 | server → client | `{"type":"ready","gestures":[...],"recommended_fps":10}` once on connect |
 | client → server | raw JPEG bytes (one frame) |
 | client → server | `{"type":"reset"}` to clear smoothing history |
+| client → server | `{"type":"config","min_confidence":0.6}` to retune the classifier (the UI's sensitivity slider) |
 | server → client | `{"type":"result","gesture":...,"confidence":...,"landmarks":[...],"frames_dropped":N,...}` |
 | server → client | `{"type":"error","detail":...}` (connection stays open) |
 

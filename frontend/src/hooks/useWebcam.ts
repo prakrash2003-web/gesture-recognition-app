@@ -77,6 +77,18 @@ export function useWebcam(): UseWebcamResult {
       streamRef.current = media
       setStream(media)
       setStatus('active')
+
+      // If the OS drops the device (unplugged, taken by another app), react.
+      media.getVideoTracks().forEach((track) => {
+        track.addEventListener('ended', () => {
+          if (streamRef.current === media) {
+            streamRef.current = null
+            setStream(null)
+            setStatus('inUse')
+            setErrorDetail('The camera stopped unexpectedly.')
+          }
+        })
+      })
     } catch (err) {
       const { status: s, detail } = classifyError(err)
       setStatus(s)

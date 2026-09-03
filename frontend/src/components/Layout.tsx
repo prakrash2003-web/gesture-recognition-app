@@ -8,8 +8,11 @@ import { NavBar } from './NavBar'
 export function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
       <NavBar />
-      <main className="flex-1">
+      <main id="main" className="flex-1">
         <Outlet />
       </main>
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 dark:border-slate-800">

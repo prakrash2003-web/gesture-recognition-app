@@ -26,10 +26,11 @@ import json
 from dataclasses import dataclass, field
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from app.gestures import SUPPORTED_GESTURES
-from app.schemas import ErrorMessage, FrameResultMessage, ReadyMessage
+from app.schemas import ConfigMessage, ErrorMessage, FrameResultMessage, ReadyMessage
 from app.vision.decode import FrameDecodeError
 from app.vision.pipeline import GesturePipeline
 
@@ -44,6 +45,7 @@ class _ConnectionState:
     frames_received: int = 0
     frames_processed: int = 0
     reset_requested: bool = False
+    pending_min_confidence: float | None = None
     open: bool = True
     wake: asyncio.Event = field(default_factory=asyncio.Event)
 
@@ -71,8 +73,19 @@ def _handle_control_message(text: str, state: _ConnectionState) -> None:
         payload = json.loads(text)
     except json.JSONDecodeError:
         return
-    if isinstance(payload, dict) and payload.get("type") == "reset":
+    if not isinstance(payload, dict):
+        return
+
+    kind = payload.get("type")
+    if kind == "reset":
         state.reset_requested = True
+        state.wake.set()
+    elif kind == "config":
+        try:
+            config = ConfigMessage.model_validate(payload)
+        except ValidationError:
+            return
+        state.pending_min_confidence = config.min_confidence
         state.wake.set()
 
 
@@ -87,6 +100,10 @@ async def _process_loop(
         if state.reset_requested:
             state.reset_requested = False
             await run_in_threadpool(pipeline.reset)
+
+        if state.pending_min_confidence is not None:
+            pipeline.set_min_confidence(state.pending_min_confidence)
+            state.pending_min_confidence = None
 
         frame = state.latest_frame
         state.latest_frame = None
@@ -133,7 +150,12 @@ async def gesture_socket(websocket: WebSocket) -> None:
 
     pipeline: GesturePipeline = await run_in_threadpool(GesturePipeline)
     await _safe_send(
-        websocket, ReadyMessage(gestures=list(SUPPORTED_GESTURES), recommended_fps=_RECOMMENDED_FPS)
+        websocket,
+        ReadyMessage(
+            gestures=list(SUPPORTED_GESTURES),
+            recommended_fps=_RECOMMENDED_FPS,
+            min_confidence=pipeline.min_confidence,
+        ),
     )
 
     state = _ConnectionState()

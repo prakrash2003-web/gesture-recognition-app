@@ -21,7 +21,11 @@ from __future__ import annotations
 
 import time
 
-from app.vision.classifier_rules import classify
+from app.vision.classifier_rules import (
+    DEFAULT_MIN_CONFIDENCE,
+    clamp_min_confidence,
+    classify,
+)
 from app.vision.decode import decode_jpeg, downscale
 from app.vision.landmarks import LandmarkDetector
 from app.vision.normalize import normalize_landmarks
@@ -30,9 +34,23 @@ from app.vision.types import FrameResult
 
 
 class GesturePipeline:
-    def __init__(self, *, smoothing_window: int = 6) -> None:
+    def __init__(
+        self,
+        *,
+        smoothing_window: int = 6,
+        min_confidence: float = DEFAULT_MIN_CONFIDENCE,
+    ) -> None:
         self._detector = LandmarkDetector()
         self._smoother = GestureSmoother(window=smoothing_window)
+        self._min_confidence = clamp_min_confidence(min_confidence)
+
+    @property
+    def min_confidence(self) -> float:
+        return self._min_confidence
+
+    def set_min_confidence(self, value: float) -> None:
+        """Adjust the classifier threshold live (from the UI's sensitivity control)."""
+        self._min_confidence = clamp_min_confidence(value)
 
     def process_frame(self, data: bytes) -> FrameResult:
         started = time.perf_counter()
@@ -53,7 +71,9 @@ class GesturePipeline:
             )
 
         normalized = normalize_landmarks(hand.points)
-        prediction = self._smoother.update(classify(normalized))
+        prediction = self._smoother.update(
+            classify(normalized, min_confidence=self._min_confidence)
+        )
 
         return FrameResult(
             gesture=prediction.gesture,

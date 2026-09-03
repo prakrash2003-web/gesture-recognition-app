@@ -6,11 +6,14 @@ WebSocket, and draws the hand skeleton and recognized gesture over the video.
 
 ## Status
 
-**Phase 5 complete** — the live pipeline works end to end: the Live page turns on
-the webcam, streams downscaled JPEG frames over the WebSocket, and renders the
-recognized gesture, a confidence bar, the 21-point hand skeleton overlay, and
-session stats (fps, latency, dropped frames, detections). Permission / error /
-reconnect states are handled.
+**Phase 6 complete** — on top of the live pipeline:
+- a **settings panel** (mirror, skeleton overlay, target fps, sensitivity) persisted
+  to localStorage; sensitivity retunes the backend classifier live
+- a **Dashboard** (lazy-loaded) with Recharts: gesture-frequency bar chart,
+  confidence-over-time area chart, stat tiles, and a gesture-history timeline
+- **reconnection UX**: a status banner, a cold-start hint, attempt counter, retry
+- **accessibility**: skip link, `role="switch"` toggles, aria-live gesture readout,
+  `prefers-reduced-motion` handling, keyboard-dismissable settings panel
 
 > Browser-only paths (camera, canvas, WebSocket) are covered by mocked unit
 > tests. Real-camera verification is a manual step — see the repo's Phase 5 notes.

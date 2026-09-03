@@ -55,6 +55,16 @@ class ReadyMessage(BaseModel):
     recommended_fps: int = Field(
         default=10, description="How many frames per second the client should send."
     )
+    min_confidence: float = Field(
+        description="Current classifier threshold (the UI's sensitivity control)."
+    )
+
+
+class ConfigMessage(BaseModel):
+    """Client -> server tuning message: {"type": "config", "min_confidence": 0.6}."""
+
+    type: Literal["config"] = "config"
+    min_confidence: float = Field(ge=0.0, le=1.0)
 
 
 class FrameResultMessage(BaseModel):

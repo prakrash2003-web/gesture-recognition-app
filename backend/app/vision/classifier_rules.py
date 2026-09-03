@@ -42,9 +42,16 @@ _TEMPLATES: dict[str, tuple[int, int, int, int, int]] = {
 _FINGER_ORDER = ("thumb", "index", "middle", "ring", "pinky")
 
 # Decision thresholds (normalized-landmark units; hand size ~= 1).
-_MIN_CONFIDENCE = 0.72  # below this, report "no recognized gesture"
+DEFAULT_MIN_CONFIDENCE = 0.72  # below this, report "no recognized gesture"
+MIN_CONFIDENCE_RANGE = (0.40, 0.95)  # allowed range when the user tunes sensitivity
+_RUNNER_UP_MARGIN = 0.04  # the winner must beat the 2nd-best gesture by this much
 _PINCH_DIST = 0.35  # thumb tip <-> index tip distance that counts as "touching"
 _POINT_UP_Y = -0.25  # a tip this far above the wrist (negative y) counts as "up"
+
+
+def clamp_min_confidence(value: float) -> float:
+    lo, hi = MIN_CONFIDENCE_RANGE
+    return max(lo, min(hi, value))
 
 
 def _pattern_score(states: dict[str, bool], template: tuple[int, ...]) -> float:
@@ -52,8 +59,18 @@ def _pattern_score(states: dict[str, bool], template: tuple[int, ...]) -> float:
     return float(1.0 - np.abs(observed - np.array(template, dtype=float)).mean())
 
 
-def classify(normalized_points: np.ndarray) -> GesturePrediction:
-    """Classify one hand. `normalized_points` is the (21, 3) output of normalize()."""
+def classify(
+    normalized_points: np.ndarray,
+    *,
+    min_confidence: float = DEFAULT_MIN_CONFIDENCE,
+) -> GesturePrediction:
+    """Classify one hand. `normalized_points` is the (21, 3) output of normalize().
+
+    `min_confidence` is the score the winning gesture must reach to be reported;
+    the user tunes it via the "sensitivity" control. The winner must also beat the
+    runner-up by a small margin, so a near-tie reads as "unrecognized" rather than
+    flickering between two gestures.
+    """
     states = finger_states(normalized_points)
 
     tips_y = normalized_points[list(FINGERTIPS), 1]
@@ -78,10 +95,14 @@ def classify(normalized_points: np.ndarray) -> GesturePrediction:
 
         scores[gesture] = round(score, 4)
 
+    ranked = sorted(scores.values(), reverse=True)
     best_gesture = max(scores, key=scores.get)
-    best_score = scores[best_gesture]
+    best_score = ranked[0]
+    runner_up = ranked[1] if len(ranked) > 1 else 0.0
 
-    if best_score < _MIN_CONFIDENCE:
+    confident = best_score >= min_confidence
+    decisive = best_score - runner_up >= _RUNNER_UP_MARGIN
+    if not (confident and decisive):
         return GesturePrediction(gesture=None, confidence=best_score, scores=scores)
 
     return GesturePrediction(gesture=best_gesture, confidence=best_score, scores=scores)

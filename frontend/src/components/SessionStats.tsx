@@ -10,6 +10,7 @@ interface SessionStatsProps {
   latencyMs: number | null
   framesDropped: number
   detections: number
+  reconnectAttempt?: number
 }
 
 const SOCKET_LABEL: Record<SocketStatus, string> = {
@@ -27,9 +28,15 @@ export function SessionStats({
   latencyMs,
   framesDropped,
   detections,
+  reconnectAttempt = 0,
 }: SessionStatsProps) {
+  const connectionText =
+    socketStatus === 'reconnecting' && reconnectAttempt > 1
+      ? `${SOCKET_LABEL[socketStatus]} (${reconnectAttempt})`
+      : SOCKET_LABEL[socketStatus]
+
   const rows: Array<[string, string]> = [
-    ['Connection', SOCKET_LABEL[socketStatus]],
+    ['Connection', connectionText],
     ['Throughput', socketStatus === 'live' ? `${fps.toFixed(1)} fps` : '--'],
     ['Server latency', latencyMs != null ? `${latencyMs.toFixed(0)} ms` : '--'],
     ['Frames dropped', String(framesDropped)],

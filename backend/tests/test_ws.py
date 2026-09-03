@@ -23,6 +23,7 @@ def test_sends_ready_with_the_gesture_list_on_connect(client):
 
     assert message["type"] == "ready"
     assert message["recommended_fps"] == 10
+    assert 0.4 <= message["min_confidence"] <= 0.95
     assert {g["id"] for g in message["gestures"]} == {g.id for g in SUPPORTED_GESTURES}
 
 
@@ -66,5 +67,22 @@ def test_unknown_text_message_is_ignored(client):
     with client.websocket_connect("/ws") as ws:
         ws.receive_json()  # ready
         ws.send_text("not json at all")
+        ws.send_bytes(_blank_jpeg())
+        assert ws.receive_json()["type"] == "result"
+
+
+def test_config_message_retunes_the_classifier(client):
+    with client.websocket_connect("/ws") as ws:
+        ws.receive_json()  # ready
+        ws.send_text('{"type": "config", "min_confidence": 0.5}')
+        ws.send_bytes(_blank_jpeg())
+        # Connection survives and keeps producing results.
+        assert ws.receive_json()["type"] == "result"
+
+
+def test_malformed_config_message_is_ignored(client):
+    with client.websocket_connect("/ws") as ws:
+        ws.receive_json()  # ready
+        ws.send_text('{"type": "config", "min_confidence": "high"}')
         ws.send_bytes(_blank_jpeg())
         assert ws.receive_json()["type"] == "result"

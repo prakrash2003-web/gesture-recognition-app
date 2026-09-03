@@ -8,13 +8,15 @@ import type { FrameResultMessage, ReadyMessage, ServerMessage } from '../types'
 // Responsibilities:
 //   * open the socket when `enabled` turns true, close it when it turns false
 //   * after the server's "ready" message, send one captured frame on a timer,
-//     throttled to the fps the server asked for
+//     throttled to `targetFps` (falling back to the server's recommendation)
 //   * never let two captures overlap (skip a tick if the previous is still going)
-//   * expose the latest result / error for the UI
+//   * push classifier-tuning ({"type":"config"}) whenever `minConfidence` changes
+//   * expose the latest result / error / reconnection attempt for the UI
 //   * auto-reconnect with exponential backoff if the connection drops while enabled
 //
-// All the connection machinery lives inside one effect keyed on `enabled`, so the
-// setup and teardown are a matched pair and there are no stale closures.
+// The connection machinery lives in one effect keyed on `enabled`; `targetFps`
+// and `minConfidence` are read through refs so changing them does not tear the
+// socket down.
 
 export type SocketStatus =
   | 'idle'
@@ -27,6 +29,8 @@ export type SocketStatus =
 interface UseGestureSocketOptions {
   enabled: boolean
   captureFrame: () => Promise<Blob | null>
+  targetFps?: number
+  minConfidence?: number
 }
 
 interface UseGestureSocketResult {
@@ -34,6 +38,7 @@ interface UseGestureSocketResult {
   ready: ReadyMessage | null
   lastResult: FrameResultMessage | null
   lastError: string | null
+  reconnectAttempt: number
   sendReset: () => void
 }
 
@@ -44,55 +49,78 @@ const MIN_INTERVAL_MS = 40
 export function useGestureSocket({
   enabled,
   captureFrame,
+  targetFps,
+  minConfidence,
 }: UseGestureSocketOptions): UseGestureSocketResult {
   const [status, setStatus] = useState<SocketStatus>('idle')
   const [ready, setReady] = useState<ReadyMessage | null>(null)
   const [lastResult, setLastResult] = useState<FrameResultMessage | null>(null)
   const [lastError, setLastError] = useState<string | null>(null)
+  const [reconnectAttempt, setReconnectAttempt] = useState(0)
 
-  // Keep the newest capture function reachable from inside the effect without
-  // making it an effect dependency (which would tear the socket down every frame).
   const captureRef = useRef(captureFrame)
+  const fpsRef = useRef(targetFps)
+  const minConfRef = useRef(minConfidence)
   useEffect(() => {
     captureRef.current = captureFrame
-  }, [captureFrame])
+    fpsRef.current = targetFps
+    minConfRef.current = minConfidence
+  }, [captureFrame, targetFps, minConfidence])
 
-  // Exposed so the UI's "Reset" button can talk to the live socket.
   const socketRef = useRef<WebSocket | null>(null)
+
+  const sendConfig = useCallback((value: number) => {
+    const ws = socketRef.current
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'config', min_confidence: value }))
+    }
+  }, [])
+
+  // Push a threshold change to an already-open socket.
+  useEffect(() => {
+    if (minConfidence != null) sendConfig(minConfidence)
+  }, [minConfidence, sendConfig])
 
   useEffect(() => {
     if (!enabled) return
 
     let disposed = false
     let ws: WebSocket | null = null
-    let sendTimer: ReturnType<typeof setInterval> | null = null
+    let sendTimer: ReturnType<typeof setTimeout> | null = null
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
     let attempt = 0
     let inFlight = false
+    let readySnapshot: ReadyMessage | null = null
+
+    const intervalMs = () => {
+      const fps = fpsRef.current ?? readySnapshot?.recommended_fps ?? DEFAULT_FPS
+      return Math.max(1000 / Math.max(1, fps), MIN_INTERVAL_MS)
+    }
 
     const stopSendLoop = () => {
       if (sendTimer !== null) {
-        clearInterval(sendTimer)
+        clearTimeout(sendTimer)
         sendTimer = null
       }
     }
 
-    const startSendLoop = (fps: number) => {
-      stopSendLoop()
-      const intervalMs = Math.max(1000 / Math.max(1, fps), MIN_INTERVAL_MS)
-      sendTimer = setInterval(() => {
-        const socket = ws
-        if (!socket || socket.readyState !== WebSocket.OPEN || inFlight) return
-        inFlight = true
-        void captureRef
-          .current()
-          .then((blob) => {
-            if (blob && socket.readyState === WebSocket.OPEN) socket.send(blob)
-          })
-          .finally(() => {
-            inFlight = false
-          })
-      }, intervalMs)
+    const tick = () => {
+      const socket = ws
+      if (!socket || socket.readyState !== WebSocket.OPEN) return
+      if (inFlight) {
+        sendTimer = setTimeout(tick, intervalMs())
+        return
+      }
+      inFlight = true
+      void captureRef
+        .current()
+        .then((blob) => {
+          if (blob && socket.readyState === WebSocket.OPEN) socket.send(blob)
+        })
+        .finally(() => {
+          inFlight = false
+          if (!disposed) sendTimer = setTimeout(tick, intervalMs())
+        })
     }
 
     const handleMessage = (event: MessageEvent) => {
@@ -104,9 +132,12 @@ export function useGestureSocket({
         return
       }
       if (message.type === 'ready') {
+        readySnapshot = message
         setReady(message)
         setStatus('live')
-        startSendLoop(message.recommended_fps || DEFAULT_FPS)
+        if (minConfRef.current != null) sendConfig(minConfRef.current)
+        stopSendLoop()
+        tick()
       } else if (message.type === 'result') {
         setLastResult(message)
       } else if (message.type === 'error') {
@@ -127,6 +158,7 @@ export function useGestureSocket({
 
       ws.onopen = () => {
         attempt = 0
+        setReconnectAttempt(0)
       }
       ws.onmessage = handleMessage
       ws.onerror = () => setLastError('WebSocket connection error')
@@ -134,6 +166,7 @@ export function useGestureSocket({
         stopSendLoop()
         if (disposed) return
         attempt += 1
+        setReconnectAttempt(attempt)
         const delay = Math.min(1000 * 2 ** (attempt - 1), MAX_BACKOFF_MS)
         setStatus('reconnecting')
         reconnectTimer = setTimeout(connect, delay)
@@ -162,8 +195,9 @@ export function useGestureSocket({
       setReady(null)
       setLastResult(null)
       setLastError(null)
+      setReconnectAttempt(0)
     }
-  }, [enabled])
+  }, [enabled, sendConfig])
 
   const sendReset = useCallback(() => {
     const ws = socketRef.current
@@ -173,5 +207,5 @@ export function useGestureSocket({
     setLastResult(null)
   }, [])
 
-  return { status, ready, lastResult, lastError, sendReset }
+  return { status, ready, lastResult, lastError, reconnectAttempt, sendReset }
 }

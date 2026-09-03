@@ -35,3 +35,15 @@ def test_bad_bytes_propagate_a_decode_error():
         assert raised
     finally:
         pipeline.close()
+
+
+def test_min_confidence_is_clamped_on_construction_and_update():
+    pipeline = GesturePipeline(min_confidence=5.0)
+    try:
+        assert pipeline.min_confidence <= 0.95
+        pipeline.set_min_confidence(-1.0)
+        assert pipeline.min_confidence >= 0.40
+        pipeline.set_min_confidence(0.6)
+        assert pipeline.min_confidence == 0.6
+    finally:
+        pipeline.close()

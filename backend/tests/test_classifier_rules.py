@@ -4,7 +4,11 @@ import numpy as np
 import pytest
 
 from app.gestures import SUPPORTED_GESTURES
-from app.vision.classifier_rules import classify
+from app.vision.classifier_rules import (
+    MIN_CONFIDENCE_RANGE,
+    clamp_min_confidence,
+    classify,
+)
 from app.vision.normalize import normalize_landmarks
 from tests.fixtures import synthetic_hands as hands
 
@@ -58,3 +62,22 @@ def test_classification_is_translation_and_scale_invariant():
 def test_classify_rejects_a_bad_shape():
     with pytest.raises((ValueError, IndexError)):
         classify(np.zeros((5, 3)))
+
+
+def _noisy_victory():
+    # Victory shape but with the ring finger also extended - a marginal match.
+    return hands.build_hand(thumb=False, index=True, middle=True, ring=True, pinky=False)
+
+
+def test_min_confidence_gates_a_marginal_hand():
+    points = normalize_landmarks(_noisy_victory())
+
+    assert classify(points, min_confidence=0.72).gesture == "victory"
+    assert classify(points, min_confidence=0.9).gesture is None
+
+
+def test_clamp_min_confidence_stays_in_range():
+    lo, hi = MIN_CONFIDENCE_RANGE
+    assert clamp_min_confidence(0.0) == lo
+    assert clamp_min_confidence(1.0) == hi
+    assert clamp_min_confidence(0.6) == 0.6

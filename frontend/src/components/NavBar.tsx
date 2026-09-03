@@ -24,7 +24,7 @@ export function NavBar() {
           GestureFlow
         </NavLink>
 
-        <ul className="flex items-center gap-1">
+        <ul className="flex items-center gap-1 overflow-x-auto">
           {LINKS.map((link) => (
             <li key={link.to}>
               <NavLink
