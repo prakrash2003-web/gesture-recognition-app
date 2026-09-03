@@ -6,9 +6,14 @@ WebSocket, and draws the hand skeleton and recognized gesture over the video.
 
 ## Status
 
-**Phase 4 complete** — the application shell: routing, navigation, four pages,
-light/dark theme, backend health indicator, and the Gesture Guide (which loads
-its list from `GET /gestures`). The webcam + WebSocket wiring comes in Phase 5.
+**Phase 5 complete** — the live pipeline works end to end: the Live page turns on
+the webcam, streams downscaled JPEG frames over the WebSocket, and renders the
+recognized gesture, a confidence bar, the 21-point hand skeleton overlay, and
+session stats (fps, latency, dropped frames, detections). Permission / error /
+reconnect states are handled.
+
+> Browser-only paths (camera, canvas, WebSocket) are covered by mocked unit
+> tests. Real-camera verification is a manual step — see the repo's Phase 5 notes.
 
 ## Layout
 
@@ -23,13 +28,18 @@ frontend/
 │   ├── vite-env.d.ts      types for import.meta.env
 │   ├── index.css          Tailwind import + design tokens + base styles
 │   ├── lib/
-│   │   └── api.ts          fetch wrappers for /health and /gestures
+│   │   ├── api.ts           fetch wrappers for /health and /gestures
+│   │   ├── frameCapture.ts  <video> frame -> downscaled JPEG Blob (reused canvas)
+│   │   └── drawLandmarks.ts 21-point skeleton onto a 2D canvas context
 │   ├── hooks/
-│   │   ├── useTheme.ts        light/dark state, persisted to localStorage
-│   │   ├── useBackendHealth.ts   polls /health
-│   │   └── useGestures.ts     loads the gesture list
+│   │   ├── useTheme.ts         light/dark state, persisted to localStorage
+│   │   ├── useBackendHealth.ts    polls /health
+│   │   ├── useGestures.ts      loads the gesture list
+│   │   ├── useWebcam.ts        getUserMedia + permission/error states
+│   │   └── useGestureSocket.ts the /ws connection: send loop + reconnect
 │   ├── components/         Layout, NavBar, ThemeToggle, BackendStatusBadge,
-│   │                       Card, PageContainer, GestureCard
+│   │                       Card, PageContainer, GestureCard, CameraView,
+│   │                       GesturePanel, SessionStats
 │   ├── pages/              LivePage, DashboardPage, GuidePage, AboutPage, NotFoundPage
 │   └── test/setup.ts       Vitest setup (jest-dom matchers, cleanup)
 └── vite.config.ts         plugins (react, tailwind) + Vitest config

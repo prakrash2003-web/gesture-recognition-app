@@ -9,9 +9,9 @@ Roadmap phases 0-10 are described in `docs/decisions.md` and the chat plan.
 | 1 | FastAPI skeleton: `/`, `/health`, `/gestures`, tests, CI | done (`2e0c003`) |
 | 2 | Offline CV pipeline: decode → landmarks → normalize → fingers → rule classifier → smoothing | done (`c31f505`) |
 | 3 | WebSocket `/ws` streaming the pipeline; wire-format Pydantic models | done (`09b82bf`) |
-| 4 | Frontend skeleton: Vite + React + TS + Tailwind, pages, nav, theme | done |
-| 5 | Connect end-to-end: webcam capture → frame throttle → WS → overlay + gesture card | next |
-| 6 | Robustness/UX: permission + error + reconnect states, stats dashboard, gesture history, guide | todo |
+| 4 | Frontend skeleton: Vite + React + TS + Tailwind, pages, nav, theme | done (`3de19bc`) |
+| 5 | Connect end-to-end: webcam capture → frame throttle → WS → overlay + gesture card | done |
+| 6 | Robustness/UX: settings, stats dashboard (Recharts), gesture history, more error states | next |
 | 7 | ML upgrade: data collection, training, evaluation, confusion matrix, model comparison page | todo |
 | 8 | Deployment: backend Docker → Hugging Face Spaces, frontend → Vercel (**needs user accounts/secrets**) | todo |
 | 9 | Polish + docs: full README, screenshots, architecture diagram, a11y/perf pass | todo |
@@ -29,6 +29,16 @@ Roadmap phases 0-10 are described in `docs/decisions.md` and the chat plan.
   React Router v7.
 - CORS added to the backend early (Phase 4, not 5) because the Guide page fetches
   `/gestures`. Origins via `GESTUREFLOW_ALLOWED_ORIGINS` (default localhost:5173).
+- Phase 5 wiring: `useWebcam` (getUserMedia + permission states) -> `frameCapture`
+  (downscale to 320px JPEG on a reused canvas) -> `useGestureSocket` (one send
+  timer throttled to the server's fps, skip-if-in-flight, backoff reconnect) ->
+  `drawLandmarks` (skeleton on an overlay canvas). `LivePage` wires them.
+- Browser-only paths (getUserMedia, canvas.toBlob, browser WebSocket) are covered
+  by mocked unit tests, NOT a real camera. Transport verified live: preview build
+  serves, REST CORS header present, WS handshake returns `ready`.
+- TODO Phase 8: the `/ws` endpoint does not yet validate the browser `Origin`
+  header (Starlette CORS middleware doesn't cover WebSockets). Add an allowlist
+  check before deploying.
 - MediaPipe: classic `solutions.hands` API, model bundled (no download). Works on
   Python 3.12 / Windows with `mediapipe==0.10.21`, `numpy==1.26.4`.
 - Vision unit tests use synthetic hands (`tests/fixtures/synthetic_hands.py`) — no camera.

@@ -137,3 +137,22 @@ queued.
 
 **Alternative considered:** a bounded `asyncio.Queue`. Simpler to write, but "process everything"
 is the wrong goal here — we explicitly want to *skip* work that's no longer relevant.
+
+---
+
+## 9. Where the webcam frames are prepared: in the browser
+
+**Decision:** the browser downscales each frame to ~320 px wide and JPEG-compresses it (quality 0.7)
+on a single reused `<canvas>` before sending. It sends at most `recommended_fps` (10) frames per
+second and never has two captures in flight at once.
+
+**Why:**
+- Landmark detection doesn't need a large image; a ~15 KB JPEG uploads far faster than a raw frame,
+  which keeps end-to-end latency low.
+- Reusing one canvas avoids allocating/GC-ing a bitmap 10 times a second.
+- Throttling on the client saves bandwidth and backend CPU; the "skip if the previous capture is
+  still running" guard stops a slow device from queueing work it can't keep up with. The backend's
+  own "latest frame wins" rule (#8) is the second line of defence.
+
+**Trade-off:** the backend classifies a slightly soft 320 px image. Acceptable — MediaPipe is robust
+at that size and the six gestures are coarse.
