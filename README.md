@@ -17,13 +17,15 @@ the deployed URLs below.
 
 | | |
 |---|---|
-| **App** | _add your deployed Vercel URL here, e.g. `https://gestureflow.vercel.app`_ |
-| **API** | _add your deployed Render/HF Spaces URL here, e.g. `https://gestureflow-backend.onrender.com`_ |
-| **API health** | `<API URL>/health` |
-| **Model report** | `<API URL>/model` |
+| **App** | _frontend not yet published here — add your deployed Vercel URL once available_ |
+| **API** | [`https://gesture-recognition-app-8ksr.onrender.com`](https://gesture-recognition-app-8ksr.onrender.com) |
+| **API health** | [`/health`](https://gesture-recognition-app-8ksr.onrender.com/health) — verified live: `{"status":"ok","service":"gestureflow-backend","version":"0.1.0"}` |
+| **Model report** | [`/model`](https://gesture-recognition-app-8ksr.onrender.com/model) — verified live: real dataset, `logreg` selected, 0.955 accuracy |
 
-> These two URLs are set when you deploy (`docs/DEPLOYMENT.md`) and are not stored
-> in this repository — fill them in above once you have them.
+> The backend is deployed on Render at the URL above (confirmed live). The
+> frontend's Vercel URL has not been provided yet — once it is, add it to the
+> **App** row above. Free-tier Render sleeps after ~15 min idle; the first
+> request after a while can take ~30s to wake it.
 
 ---
 
@@ -77,7 +79,8 @@ production. The rule-based classifier remains fully functional as a
 zero-dependency fallback (used automatically if the model file is ever
 unavailable) and is explained in [`docs/decisions.md`](docs/decisions.md). Full
 metrics, per-class scores, and confusion matrices: `backend/ml/reports/EVALUATION.md`,
-or live at `<API URL>/model`.
+or live at [`/model`](https://gesture-recognition-app-8ksr.onrender.com/model)
+on the deployed backend (numbers above were confirmed against it directly).
 
 ---
 
@@ -186,7 +189,9 @@ The repository ships everything needed to deploy without further code changes:
 - A WebSocket `Origin` check on the backend, so only the configured frontend origin(s) can open `/ws`
 
 Recommended path: backend on **Render** (or **Hugging Face Spaces**, Docker SDK),
-frontend on **Vercel**. Required production environment variables:
+frontend on **Vercel**. This project's own backend is deployed exactly this way,
+live at [gesture-recognition-app-8ksr.onrender.com](https://gesture-recognition-app-8ksr.onrender.com).
+Required production environment variables:
 
 | Where | Variable | Purpose |
 |---|---|---|
