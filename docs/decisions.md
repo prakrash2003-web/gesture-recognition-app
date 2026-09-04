@@ -184,7 +184,22 @@ has collected data). The `feature_version` field in the saved model is checked o
 model is rejected rather than silently mispredicting.
 
 **Data:** `scripts/record_fixtures.py` writes normalized landmarks (never images) to a per-session
-CSV. Model `.joblib` files are git-ignored and regenerated with `python -m ml.train`; only the small
-`ml/reports/comparison.json` is committed. The committed report is currently from **synthetic**
-hands (marked `provisional: true`) — enough to verify the whole pipeline; it is replaced the moment
-real data is trained.
+CSV. Model `.joblib` files and `ml/data/*.csv` are git-ignored and regenerated with `python -m
+ml.train`; only the small `ml/reports/comparison.json` is committed.
+
+**Result (real data, 2026-09-04):** 2258 samples across two sessions (s1 / s2). Trained on s1,
+tested on the unseen s2:
+
+| model | accuracy | F1 (macro) |
+|---|---|---|
+| rule-based (baseline) | 0.701 | 0.636 |
+| most-frequent | 0.156 | 0.045 |
+| logistic regression | **0.955** | **0.954** ← selected |
+| RBF SVM | 0.908 | 0.908 |
+| random forest | 0.843 | 0.831 |
+
+The random forest and SVM scored *higher* on cross-validation within s1 (~0.96 F1) but lost more
+accuracy on the unseen s2 — exactly the session-overfitting the group split is designed to expose.
+Logistic regression generalised best across sessions, so it is the shipped model. The trained model
+lifts macro-F1 from 0.64 (rules) to 0.95, mostly by fixing the rule-based classifier's
+open-palm ↔ OK-sign and pointing ↔ fist confusions.

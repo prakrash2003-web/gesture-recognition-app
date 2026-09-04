@@ -12,8 +12,8 @@ Roadmap phases 0-10 are described in `docs/decisions.md` and the chat plan.
 | 4 | Frontend skeleton: Vite + React + TS + Tailwind, pages, nav, theme | done (`3de19bc`) |
 | 5 | Connect end-to-end: webcam capture → frame throttle → WS → overlay + gesture card | done (`8c9b254`) |
 | 6 | Robustness/UX: settings, Recharts dashboard, gesture history, error/reconnect UX, a11y | done (`53aafb5`) |
-| 7 | ML upgrade: dataset format, feature set, training + eval + comparison, backend switch, Model page | code done; **awaiting real webcam data to train the production model** |
-| 8 | Deployment: backend Docker → Hugging Face Spaces, frontend → Vercel (**needs user accounts/secrets**) | todo |
+| 7 | ML upgrade: dataset format, feature set, training + eval + comparison, backend switch, Model page | done — real model trained (2258 samples / 2 sessions, logreg selected, test F1 0.954) |
+| 8 | Deployment: backend Docker → Hugging Face Spaces, frontend → Vercel (**needs user accounts/secrets**) | next |
 | 9 | Polish + docs: full README, screenshots, architecture diagram, a11y/perf pass | todo |
 | 10 | Optional gesture-driven demo interaction | todo |
 | — | CV/interview prep material | todo |
@@ -56,9 +56,15 @@ Roadmap phases 0-10 are described in `docs/decisions.md` and the chat plan.
   falls back to rule if no model. `/ws` `ready` now carries `classifier` +
   `ml_available`; `{"type":"config","classifier":"ml"}` switches live. `GET /model`
   serves `ml/reports/comparison.json`. Frontend: `/model` page, engine toggle in
-  Settings. **The committed `comparison.json` is SYNTHETIC/provisional** - a real
-  model needs the user's webcam data (`scripts/record_fixtures.py` -> `ml.train`).
-  Model `.joblib` files are git-ignored.
+  Settings. Model `.joblib` files and `ml/data/*.csv` are git-ignored.
+- Phase 7 real model (2026-09-04): user collected 2258 samples across sessions
+  s1/s2 and ran `python -m ml.train`. Committed `comparison.json` is now `real`
+  (`provisional:false`). Group-by-session split (s1 train / s2 test):
+  logreg F1 0.954 / acc 0.955 (selected), svm_rbf 0.908, random_forest 0.831,
+  rule_based 0.636 / acc 0.701, most_frequent 0.045. RF/SVM had higher CV-F1 on
+  s1 but lost more on the unseen s2 -> logreg generalises best across sessions.
+  Verified: MLClassifier reproduces 0.955 acc on s2; pipeline switch routes to the
+  real joblib; missing-model fallback to rule works.
 - MediaPipe: classic `solutions.hands` API, model bundled (no download). Works on
   Python 3.12 / Windows with `mediapipe==0.10.21`, `numpy==1.26.4`.
 - Vision unit tests use synthetic hands (`tests/fixtures/synthetic_hands.py`) — no camera.

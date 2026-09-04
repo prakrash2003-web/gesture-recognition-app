@@ -91,4 +91,18 @@ describe('ModelPage', () => {
     expect(screen.getByText(/rule-based — confusion matrix/i)).toBeInTheDocument()
     expect(screen.getByText(/logreg — confusion matrix/i)).toBeInTheDocument()
   })
+
+  it('hides the provisional banner for a real-dataset report', () => {
+    const real: ModelInfoResponse = {
+      ...REPORT,
+      ml_available: true,
+      report: { ...REPORT.report!, provisional: false, dataset: 'real' },
+    }
+    mockUseModelInfo.mockReturnValue({ info: real, loading: false, error: null })
+    render_()
+
+    expect(screen.queryByText(/provisional results/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/real dataset/i)).toBeInTheDocument()
+    expect(screen.getByText(/logreg ★/)).toBeInTheDocument()
+  })
 })
