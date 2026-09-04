@@ -277,16 +277,35 @@ the backend pytest suite.
 
 ## Screenshots / demo
 
-No screenshots are committed to this repository yet, and none have been faked or
-placeholder-imaged in to make the README look more finished than the repo
-actually is. The fastest way to see the real thing is the **live demo above** —
-it is the actual deployed application, not a static substitute.
+Captured from the live deployment at
+[gesture-recognition-app-tawny.vercel.app](https://gesture-recognition-app-tawny.vercel.app/).
 
-_(To add real screenshots later: capture the Live, Dashboard, Model, and About
-pages from the URL above and save them as `docs/screenshots/live.png`,
-`dashboard.png`, `model.png`, `about.png` — see
-[`docs/screenshots/README.md`](docs/screenshots/README.md) for the exact list.
-The README can then reference them directly.)_
+### Live recognition
+Real-time webcam capture with the 21-point hand skeleton overlay and the
+recognized gesture + confidence, connection status, and session stats.
+
+![Live recognition page](docs/screenshots/live.png)
+
+### Dashboard
+Session statistics — gesture-frequency and confidence-over-time charts, built
+from the live recognition session.
+
+![Dashboard page](docs/screenshots/dashboard.png)
+
+### Model comparison
+Real evaluation metrics (accuracy, precision, recall, F1) and confusion
+matrices for the rule-based baseline vs. every trained candidate, served live
+from the backend.
+
+![Model comparison page](docs/screenshots/model.png)
+
+### About
+The pipeline explanation and technology breakdown page.
+
+![About page](docs/screenshots/about.png)
+
+For the interactive version, use the [live demo](#live-demo) — these are static
+captures of it, not a substitute for it.
 
 ---
 
