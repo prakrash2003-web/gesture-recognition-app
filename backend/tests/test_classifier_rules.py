@@ -36,6 +36,33 @@ def test_thumbs_up_needs_the_thumb_pointing_up():
     assert prediction.gesture != "thumbs_up"
 
 
+def test_closed_fist_with_a_straightish_raised_thumb_is_not_thumbs_up():
+    """Regression: a real closed fist has the thumb nearly as straight as an
+    extended one and often sitting higher than the wrist. It must still read as a
+    fist unless the thumb clearly protrudes past the curled fingers (the real
+    failure mode reported during manual testing).
+    """
+    fist = normalize_landmarks(hands.fist())
+    # Straighten the thumb and lift it just above the fist, without extending it
+    # out (tip stays close to the curled fingertips).
+    curled_tip_reach = np.linalg.norm(fist[[8, 12, 16, 20]].mean(axis=0) - fist[0])
+    for joint, up in ((2, 0.10), (3, 0.20), (4, 0.30)):
+        fist[joint] = np.array([0.05, -up, 0.0])  # roughly collinear, pointing up
+
+    from app.vision.geometry import distance
+
+    protrusion = distance(fist[4], fist[0]) - curled_tip_reach
+    assert protrusion < 0.55  # the fixture really is a non-protruding thumb
+
+    assert classify(fist).gesture != "thumbs_up"
+
+
+def test_a_real_thumbs_up_still_classifies_after_the_fist_fix():
+    prediction = classify(normalize_landmarks(hands.thumbs_up()))
+    assert prediction.gesture == "thumbs_up"
+    assert prediction.confidence >= 0.72
+
+
 def test_ambiguous_hand_returns_no_gesture():
     """Thumb + middle + pinky up (a "spider") matches no template well."""
     ambiguous = hands.build_hand(thumb=True, index=False, middle=True, ring=False, pinky=True)

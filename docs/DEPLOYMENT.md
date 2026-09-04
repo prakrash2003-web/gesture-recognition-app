@@ -20,11 +20,12 @@ Both recommended hosts provide HTTPS automatically.
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` (repo root) | Builds the backend image (runtime deps only, system libs for OpenCV/MediaPipe, the trained model + report baked in) |
+| `Dockerfile` (repo root) | Builds the backend image: runtime deps only, `libgl1`/`libglib2.0-0` for OpenCV/MediaPipe, the trained model + report baked in, runs as a non-root user, `HEALTHCHECK` hits `/health` |
 | `.dockerignore` | Keeps the image small (no tests, datasets, frontend, docs) |
 | `frontend/vercel.json` | Vite framework + SPA rewrite so `/model`, `/guide` etc. don't 404 on refresh |
-| `backend/app/config.py` | All prod settings are env vars (below) |
-| WebSocket `Origin` check | `/ws` rejects browser origins not in `GESTUREFLOW_ALLOWED_ORIGINS` |
+| `backend/app/config.py` | All prod settings are env vars (below); `backend/.env.example` documents them |
+| `frontend/src/config.ts` | Reads `VITE_*` env vars; a prod build with them missing logs a console error and falls back to localhost |
+| WebSocket `Origin` check | `/ws` rejects browser origins not in `GESTUREFLOW_ALLOWED_ORIGINS` (close 1008); clients sending no Origin are allowed |
 
 ## Environment variables
 
@@ -32,9 +33,12 @@ Both recommended hosts provide HTTPS automatically.
 
 | Variable | Value in production | Default |
 |---|---|---|
-| `GESTUREFLOW_ALLOWED_ORIGINS` | `https://<your-frontend>.vercel.app` | localhost:5173 |
-| `GESTUREFLOW_CLASSIFIER` | `ml` (to serve the trained model) or `rule` | `rule` |
-| `PORT` | injected by Render; set to `7860` on HF Spaces | `8000` |
+| `GESTUREFLOW_ALLOWED_ORIGINS` | `https://<your-frontend>.vercel.app` (exact, no trailing slash) | localhost:5173 |
+| `GESTUREFLOW_CLASSIFIER` | **`ml`** — the trained model scores 0.95 vs the rule baseline's 0.83 | `rule` |
+| `PORT` | injected by Render automatically; on HF Spaces set `7860` | `8000` |
+
+`GESTUREFLOW_CLASSIFIER=ml` is safe even if something goes wrong with the model
+file — the backend logs a warning and serves the rule-based classifier instead.
 
 **Frontend** (set in the Vercel project settings):
 
@@ -104,7 +108,13 @@ Both recommended hosts provide HTTPS automatically.
 
 ```bash
 docker build -t gestureflow-backend .
-docker run -p 8000:8000 -e GESTUREFLOW_WS_ALLOW_ANY_ORIGIN=1 gestureflow-backend
-curl http://localhost:8000/health
-python backend/scripts/ws_smoke.py
+docker run -p 8000:8000 -e GESTUREFLOW_CLASSIFIER=ml gestureflow-backend
+curl http://localhost:8000/health          # {"status":"ok",...}
+curl http://localhost:8000/model | head -c 200
+python backend/scripts/ws_smoke.py         # ws_smoke sends no Origin, so it is allowed
 ```
+
+The image is built from the **repo root** (the build context), because the
+Dockerfile copies `backend/app`, `backend/ml/models` and `backend/ml/reports`.
+`app/config.py` resolves its model path to `/app/ml/models/gesture_clf.joblib`
+inside the container, which is where the `COPY` puts it.

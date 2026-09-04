@@ -1,12 +1,12 @@
 # Model comparison
 
-Generated: 2026-09-04T11:38:56Z  |  dataset: **real**
+Generated: 2026-09-04T12:39:44Z  |  dataset: **real**
 
 2258 samples, split `group-by-session` (1115 train / 1143 test).
 
 | model | accuracy | precision | recall | F1 (macro) |
 |---|---|---|---|---|
-| rule_based | 0.7008 | 0.8023 | 0.6972 | 0.636 |
+| rule_based | 0.8635 | 0.9183 | 0.8499 | 0.8327 |
 | most_frequent | 0.1557 | 0.026 | 0.1667 | 0.0449 |
 | logreg | 0.9545 | 0.9549 | 0.9538 | 0.9541 |
 | random_forest | 0.8425 | 0.8909 | 0.8556 | 0.8306 |

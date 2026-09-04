@@ -28,13 +28,22 @@ WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# App code, the trained model, and its comparison report.
+# App code, the trained model, and its comparison report. `_BACKEND_ROOT` in
+# app/config.py resolves to /app here, so the model is expected at
+# /app/ml/models/gesture_clf.joblib and the report at /app/ml/reports/.
 COPY backend/app ./app
 COPY backend/ml/models ./ml/models
 COPY backend/ml/reports ./ml/reports
 
+# Drop privileges.
+RUN useradd --create-home --uid 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8000
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+  CMD python -c "import os,urllib.request; urllib.request.urlopen(f\"http://localhost:{os.environ.get('PORT','8000')}/health\").read()" || exit 1
+
 # One worker: the MediaPipe graph is per-process; scale with more instances.
-# $PORT is injected by Render; Hugging Face Spaces expects 7860 (set PORT=7860).
+# $PORT is injected by Render; on Hugging Face Spaces set PORT=7860.
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

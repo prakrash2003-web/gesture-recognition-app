@@ -76,9 +76,11 @@ def build_hand(
     thumb_cmc = _WRIST_XY + np.array([-0.05, -0.12, 0.0])
     pts[THUMB_CMC] = thumb_cmc
     if thumb and thumb_dir == "up":
-        pts[THUMB_MCP] = thumb_cmc + np.array([-0.02, -0.12, 0.0])
-        pts[THUMB_IP] = thumb_cmc + np.array([-0.04, -0.24, 0.0])
-        pts[THUMB_TIP] = thumb_cmc + np.array([-0.06, -0.36, 0.0])
+        # Thumb stretched well up and clear of the curled fingers (a real
+        # thumbs-up: the tip reaches far past the fist, not just above it).
+        pts[THUMB_MCP] = thumb_cmc + np.array([-0.03, -0.16, 0.0])
+        pts[THUMB_IP] = thumb_cmc + np.array([-0.05, -0.40, 0.0])
+        pts[THUMB_TIP] = thumb_cmc + np.array([-0.07, -0.62, 0.0])
     elif thumb:  # extended out to the side
         pts[THUMB_MCP] = thumb_cmc + np.array([-0.09, -0.02, 0.0])
         pts[THUMB_IP] = thumb_cmc + np.array([-0.20, -0.04, 0.0])

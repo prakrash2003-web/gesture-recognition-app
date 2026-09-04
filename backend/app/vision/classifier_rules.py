@@ -27,6 +27,7 @@ from app.vision.types import (
     FINGERTIPS,
     INDEX_TIP,
     THUMB_TIP,
+    WRIST,
     GesturePrediction,
 )
 
@@ -47,6 +48,12 @@ MIN_CONFIDENCE_RANGE = (0.40, 0.95)  # allowed range when the user tunes sensiti
 _RUNNER_UP_MARGIN = 0.04  # the winner must beat the 2nd-best gesture by this much
 _PINCH_DIST = 0.35  # thumb tip <-> index tip distance that counts as "touching"
 _POINT_UP_Y = -0.25  # a tip this far above the wrist (negative y) counts as "up"
+# For a thumbs-up, the thumb tip must reach at least this much farther from the
+# wrist than the (curled) fingertips do. A closed fist has the thumb lying almost
+# as straight as an extended one, but resting *against* the fingers rather than
+# protruding - this gap is what separates the two. Value from the real dataset:
+# fist p95 ~= 0.53, thumbs-up p05 ~= 0.61.
+_THUMB_PROTRUSION = 0.55
 
 
 def clamp_min_confidence(value: float) -> float:
@@ -77,13 +84,20 @@ def classify(
     highest_tip = int(np.argmin(tips_y))  # 0=thumb, 1=index, ... (smaller y = higher)
     pinch = distance(normalized_points[THUMB_TIP], normalized_points[INDEX_TIP])
 
+    wrist = normalized_points[WRIST]
+    thumb_reach = distance(normalized_points[THUMB_TIP], wrist)
+    curled_reach = float(np.mean([distance(normalized_points[t], wrist) for t in FINGERTIPS[1:]]))
+    thumb_protrudes = thumb_reach - curled_reach > _THUMB_PROTRUSION
+
     scores: dict[str, float] = {}
     for gesture, template in _TEMPLATES.items():
         score = _pattern_score(states, template)
 
         if gesture == "thumbs_up":
+            # Must point up AND clearly stick out past the closed fingers, else a
+            # fist (thumb straight but alongside the fingers) reads as a thumbs-up.
             thumb_points_up = highest_tip == 0 and tips_y[0] < _POINT_UP_Y
-            score *= 1.0 if thumb_points_up else 0.25
+            score *= 1.0 if (thumb_points_up and thumb_protrudes) else 0.2
         elif gesture == "pointing_up":
             index_points_up = highest_tip == 1 and tips_y[1] < _POINT_UP_Y
             score *= 1.0 if index_points_up else 0.4
