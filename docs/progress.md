@@ -36,6 +36,13 @@ Roadmap phases 0-10 are described in `docs/decisions.md` and the chat plan.
 - Browser-only paths (getUserMedia, canvas.toBlob, browser WebSocket) are covered
   by mocked unit tests, NOT a real camera. Transport verified live: preview build
   serves, REST CORS header present, WS handshake returns `ready`.
+- Fist/thumbs_up fix (`21c76e3`): the rule classifier called ~95% of real fists
+  "thumbs_up" (thumb straight but alongside the fingers passed the extension +
+  points-up checks). Fixed by requiring the thumb tip to protrude past the curled
+  fingertips (`> 0.55` normalized). Rule F1 0.636 -> 0.833; ML unchanged (0.954).
+  Adding the signal as an ML feature was tried and reverted (didn't help).
+  Docker hardening: non-root user, HEALTHCHECK; frontend logs an error if the
+  prod build has no VITE_API/WS URL; backend/.env.example added.
 - Phase 8 prep (2026-09-04): `/ws` now validates the browser `Origin` against
   `GESTUREFLOW_ALLOWED_ORIGINS` (close 1008); no-Origin clients still allowed;
   `GESTUREFLOW_WS_ALLOW_ANY_ORIGIN=1` disables it. Root `Dockerfile` +
