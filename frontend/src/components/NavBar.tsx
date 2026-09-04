@@ -10,6 +10,7 @@ const LINKS = [
   { to: '/', label: 'Live', end: true },
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/guide', label: 'Guide' },
+  { to: '/model', label: 'Model' },
   { to: '/about', label: 'About' },
 ]
 

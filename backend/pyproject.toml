@@ -21,4 +21,6 @@ testpaths = ["tests"]
 filterwarnings = [
     # Protobuf internal warning surfaced via MediaPipe; not our code, not actionable.
     "ignore:Type google._upb._message.*:DeprecationWarning",
+    # scipy L-BFGS-B option deprecation surfaced via scikit-learn's LogisticRegression.
+    "ignore:.*L-BFGS-B solver are deprecated.*:DeprecationWarning",
 ]

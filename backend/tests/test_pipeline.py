@@ -47,3 +47,33 @@ def test_min_confidence_is_clamped_on_construction_and_update():
         assert pipeline.min_confidence == 0.6
     finally:
         pipeline.close()
+
+
+def test_defaults_to_the_rule_based_classifier():
+    pipeline = GesturePipeline()
+    try:
+        assert pipeline.active_classifier == "rule"
+    finally:
+        pipeline.close()
+
+
+def test_ml_request_without_a_model_falls_back_to_rule():
+    pipeline = GesturePipeline(classifier="ml", model_path="ml/models/__absent__.joblib")
+    try:
+        assert pipeline.active_classifier == "rule"
+        assert pipeline.ml_available is False
+        assert pipeline.ml_error is not None
+    finally:
+        pipeline.close()
+
+
+def test_switches_to_ml_when_a_model_is_available(trained_model_path):
+    pipeline = GesturePipeline(model_path=str(trained_model_path))
+    try:
+        assert pipeline.active_classifier == "rule"
+        assert pipeline.set_classifier("ml") is True
+        assert pipeline.active_classifier == "ml"
+        assert pipeline.set_classifier("rule") is True
+        assert pipeline.active_classifier == "rule"
+    finally:
+        pipeline.close()

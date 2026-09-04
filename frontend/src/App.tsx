@@ -5,6 +5,7 @@ import { Layout } from './components/Layout'
 import { AboutPage } from './pages/AboutPage'
 import { GuidePage } from './pages/GuidePage'
 import { LivePage } from './pages/LivePage'
+import { ModelPage } from './pages/ModelPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
 // The Dashboard pulls in the charting library (Recharts), which is large. Loading
@@ -28,6 +29,7 @@ export default function App() {
           }
         />
         <Route path="guide" element={<GuidePage />} />
+        <Route path="model" element={<ModelPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

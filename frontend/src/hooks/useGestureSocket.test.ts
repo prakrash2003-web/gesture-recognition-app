@@ -48,7 +48,14 @@ class MockWebSocket {
   }
 }
 
-const READY: ReadyMessage = { type: 'ready', gestures: [], recommended_fps: 10 }
+const READY: ReadyMessage = {
+  type: 'ready',
+  gestures: [],
+  recommended_fps: 10,
+  min_confidence: 0.7,
+  classifier: 'rule',
+  ml_available: false,
+}
 const RESULT: FrameResultMessage = {
   type: 'result',
   gesture: 'fist',

@@ -1,10 +1,14 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SettingsProvider } from '../hooks/useSettings'
 import { renderWithProviders } from '../test/renderWithProviders'
 import { SettingsPanel } from './SettingsPanel'
+
+vi.mock('../hooks/useModelInfo', () => ({
+  useModelInfo: () => ({ info: { ml_available: true, report: null }, loading: false, error: null }),
+}))
 
 afterEach(() => localStorage.clear())
 

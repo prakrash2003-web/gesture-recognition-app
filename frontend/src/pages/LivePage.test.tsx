@@ -27,6 +27,9 @@ vi.mock('../hooks/useGestureSocket', () => ({ useGestureSocket: () => socket }))
 vi.mock('../hooks/useGestures', () => ({
   useGestures: () => ({ gestures: [], loading: false, error: null }),
 }))
+vi.mock('../hooks/useModelInfo', () => ({
+  useModelInfo: () => ({ info: { ml_available: false, report: null }, loading: false, error: null }),
+}))
 
 afterEach(() => {
   vi.clearAllMocks()

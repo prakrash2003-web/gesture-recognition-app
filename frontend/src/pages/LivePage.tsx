@@ -46,6 +46,7 @@ export function LivePage() {
       captureFrame,
       targetFps: settings.targetFps,
       minConfidence,
+      classifier: settings.classifier,
     })
 
   // --- session metrics -----------------------------------------------------

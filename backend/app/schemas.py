@@ -38,6 +38,19 @@ class GesturesResponse(BaseModel):
     gestures: list[Gesture]
 
 
+class ModelInfoResponse(BaseModel):
+    """Body returned by GET /model - powers the frontend's Model comparison page."""
+
+    default_classifier: Literal["rule", "ml"] = Field(
+        description="Which classifier a new connection starts with."
+    )
+    ml_available: bool = Field(description="Whether a trained model file is present.")
+    report: dict | None = Field(
+        default=None,
+        description="The committed rule-vs-ML comparison report (ml/reports/comparison.json).",
+    )
+
+
 # --- WebSocket (/ws) message shapes --------------------------------------------
 #
 # Unlike the REST routes above, FastAPI does not auto-serialize WebSocket traffic,
@@ -58,13 +71,19 @@ class ReadyMessage(BaseModel):
     min_confidence: float = Field(
         description="Current classifier threshold (the UI's sensitivity control)."
     )
+    classifier: Literal["rule", "ml"] = Field(description="Classifier currently in use.")
+    ml_available: bool = Field(description="Whether the ML classifier can be selected.")
 
 
 class ConfigMessage(BaseModel):
-    """Client -> server tuning message: {"type": "config", "min_confidence": 0.6}."""
+    """Client -> server tuning message, e.g.
+    {"type": "config", "min_confidence": 0.6} or {"type": "config", "classifier": "ml"}.
+    Every field is optional; only the ones present are applied.
+    """
 
     type: Literal["config"] = "config"
-    min_confidence: float = Field(ge=0.0, le=1.0)
+    min_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    classifier: Literal["rule", "ml"] | None = None
 
 
 class FrameResultMessage(BaseModel):

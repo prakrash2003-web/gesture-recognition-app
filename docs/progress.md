@@ -11,8 +11,8 @@ Roadmap phases 0-10 are described in `docs/decisions.md` and the chat plan.
 | 3 | WebSocket `/ws` streaming the pipeline; wire-format Pydantic models | done (`09b82bf`) |
 | 4 | Frontend skeleton: Vite + React + TS + Tailwind, pages, nav, theme | done (`3de19bc`) |
 | 5 | Connect end-to-end: webcam capture → frame throttle → WS → overlay + gesture card | done (`8c9b254`) |
-| 6 | Robustness/UX: settings, Recharts dashboard, gesture history, error/reconnect UX, a11y | done |
-| 7 | ML upgrade: data collection, training, evaluation, confusion matrix, model comparison page | next |
+| 6 | Robustness/UX: settings, Recharts dashboard, gesture history, error/reconnect UX, a11y | done (`53aafb5`) |
+| 7 | ML upgrade: dataset format, feature set, training + eval + comparison, backend switch, Model page | code done; **awaiting real webcam data to train the production model** |
 | 8 | Deployment: backend Docker → Hugging Face Spaces, frontend → Vercel (**needs user accounts/secrets**) | todo |
 | 9 | Polish + docs: full README, screenshots, architecture diagram, a11y/perf pass | todo |
 | 10 | Optional gesture-driven demo interaction | todo |
@@ -46,6 +46,19 @@ Roadmap phases 0-10 are described in `docs/decisions.md` and the chat plan.
   margin so near-ties read as "unrecognized". Dashboard is `React.lazy`-loaded
   (keeps Recharts out of the initial bundle). Real threshold tuning still needs
   real webcam data - the plumbing is done, the numbers are provisional.
+- Phase 7: feature set in `app/vision/features.py` (25 engineered geometric
+  features, `FEATURE_VERSION` guards train/inference match). `backend/ml/`:
+  `dataset.py` (CSV of normalized landmarks, session column), `synthetic.py`
+  (jittered dataset for pipeline tests), `train.py` (session-group split, compares
+  most_frequent / logreg / random_forest / svm_rbf + scores the rule baseline on
+  the same test set), `evaluate.py`, `metrics.py`. `app/vision/classifier_ml.py`
+  loads the `.joblib`; `GesturePipeline(classifier=...)` switches rule<->ml and
+  falls back to rule if no model. `/ws` `ready` now carries `classifier` +
+  `ml_available`; `{"type":"config","classifier":"ml"}` switches live. `GET /model`
+  serves `ml/reports/comparison.json`. Frontend: `/model` page, engine toggle in
+  Settings. **The committed `comparison.json` is SYNTHETIC/provisional** - a real
+  model needs the user's webcam data (`scripts/record_fixtures.py` -> `ml.train`).
+  Model `.joblib` files are git-ignored.
 - MediaPipe: classic `solutions.hands` API, model bundled (no download). Works on
   Python 3.12 / Windows with `mediapipe==0.10.21`, `numpy==1.26.4`.
 - Vision unit tests use synthetic hands (`tests/fixtures/synthetic_hands.py`) — no camera.

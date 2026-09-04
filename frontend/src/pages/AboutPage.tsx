@@ -9,14 +9,18 @@ const PIPELINE = [
   ['WebSocket', 'One persistent connection streams frames up and results down.'],
   ['FastAPI backend', 'Receives each frame and runs the vision pipeline.'],
   ['MediaPipe', 'Locates the hand and returns 21 landmark points.'],
-  ['Rule-based classifier', 'Reads the landmark geometry and names the gesture.'],
+  [
+    'Classifier',
+    'A hand-written rule-based baseline, or a trained scikit-learn model, names the gesture.',
+  ],
   ['Result', 'Streamed back as JSON; the UI draws the skeleton and the label.'],
 ]
 
 const STACK = [
-  ['Frontend', 'React, TypeScript, Vite, Tailwind CSS, React Router'],
+  ['Frontend', 'React, TypeScript, Vite, Tailwind CSS, React Router, Recharts'],
   ['Backend', 'Python, FastAPI, Uvicorn, WebSockets'],
   ['Computer vision', 'OpenCV, MediaPipe Hands, NumPy'],
+  ['Machine learning', 'scikit-learn (logistic regression / random forest / SVM), joblib'],
   ['Tooling', 'pytest, Vitest, ruff, oxlint, GitHub Actions'],
 ]
 

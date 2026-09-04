@@ -2,6 +2,8 @@
 // The React wiring lives in hooks/useSettings.tsx; keeping the maths here makes it
 // easy to test.
 
+export type ClassifierKind = 'rule' | 'ml'
+
 export interface Settings {
   /** Mirror the video (natural for a front camera). Display-only. */
   mirror: boolean
@@ -11,6 +13,8 @@ export interface Settings {
   targetFps: number
   /** 0 = only very clear gestures, 100 = accept borderline ones. */
   sensitivity: number
+  /** Which recognition engine to use: the rule baseline or the trained model. */
+  classifier: ClassifierKind
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -18,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showOverlay: true,
   targetFps: 10,
   sensitivity: 50,
+  classifier: 'rule',
 }
 
 export const FPS_RANGE = { min: 3, max: 15 } as const
@@ -56,5 +61,9 @@ export function normalizeSettings(raw: unknown): Settings {
       typeof r.sensitivity === 'number'
         ? Math.round(clamp(r.sensitivity, SENSITIVITY_RANGE.min, SENSITIVITY_RANGE.max))
         : DEFAULT_SETTINGS.sensitivity,
+    classifier:
+      r.classifier === 'rule' || r.classifier === 'ml'
+        ? r.classifier
+        : DEFAULT_SETTINGS.classifier,
   }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
+import { useModelInfo } from '../hooks/useModelInfo'
 import { useSettings } from '../hooks/useSettings'
 import { FPS_RANGE, SENSITIVITY_RANGE } from '../lib/settings'
 import { RangeField } from './RangeField'
@@ -11,6 +12,8 @@ import { Toggle } from './Toggle'
 
 export function SettingsPanel() {
   const { settings, minConfidence, update, reset } = useSettings()
+  const { info } = useModelInfo()
+  const mlAvailable = info?.ml_available ?? false
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -93,6 +96,35 @@ export function SettingsPanel() {
             valueText={`threshold ${minConfidence.toFixed(2)}`}
             onChange={(v) => update('sensitivity', v)}
           />
+
+          <div>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
+              Recognition engine
+            </span>
+            <div className="mt-1.5 inline-flex rounded-lg border border-slate-200 p-0.5 dark:border-slate-800">
+              {(['rule', 'ml'] as const).map((kind) => {
+                const disabled = kind === 'ml' && !mlAvailable
+                const active = settings.classifier === kind
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    aria-pressed={active}
+                    disabled={disabled}
+                    title={disabled ? 'No trained model on the backend yet' : undefined}
+                    onClick={() => update('classifier', kind)}
+                    className={`rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40 ${
+                      active
+                        ? 'bg-brand-600 text-white'
+                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {kind === 'rule' ? 'Rule-based' : 'ML model'}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
           <button
             type="button"

@@ -24,6 +24,8 @@ def test_sends_ready_with_the_gesture_list_on_connect(client):
     assert message["type"] == "ready"
     assert message["recommended_fps"] == 10
     assert 0.4 <= message["min_confidence"] <= 0.95
+    assert message["classifier"] in ("rule", "ml")
+    assert isinstance(message["ml_available"], bool)
     assert {g["id"] for g in message["gestures"]} == {g.id for g in SUPPORTED_GESTURES}
 
 
@@ -86,3 +88,18 @@ def test_malformed_config_message_is_ignored(client):
         ws.send_text('{"type": "config", "min_confidence": "high"}')
         ws.send_bytes(_blank_jpeg())
         assert ws.receive_json()["type"] == "result"
+
+
+def test_switching_to_ml_without_a_model_reports_an_error_and_keeps_going(client, monkeypatch):
+    monkeypatch.setattr("app.ws.MODEL_PATH", "ml/models/__absent_for_test__.joblib")
+    with client.websocket_connect("/ws") as ws:
+        ready = ws.receive_json()
+        assert ready["ml_available"] is False
+
+        ws.send_text('{"type": "config", "classifier": "ml"}')
+        ws.send_bytes(_blank_jpeg())
+
+        messages = [ws.receive_json(), ws.receive_json()]
+        kinds = {m["type"] for m in messages}
+        assert "error" in kinds  # ML unavailable
+        assert "result" in kinds  # stream continues on rule-based

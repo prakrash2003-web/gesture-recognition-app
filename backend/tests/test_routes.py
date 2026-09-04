@@ -48,3 +48,17 @@ def test_gesture_entries_are_well_formed(client):
         assert gesture["name"]
         assert gesture["emoji"]
         assert gesture["description"]
+
+
+def test_model_endpoint_reports_classifier_state(client):
+    response = client.get("/model")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["default_classifier"] in ("rule", "ml")
+    assert isinstance(body["ml_available"], bool)
+    # `report` is the committed synthetic comparison (or null on a fresh checkout).
+    if body["report"] is not None:
+        assert "models" in body["report"]
+        assert "rule_based" in body["report"]["models"]
+        assert body["report"]["selected_model"] in body["report"]["models"]

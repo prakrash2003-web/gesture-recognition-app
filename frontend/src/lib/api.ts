@@ -3,7 +3,7 @@
 // error states; this file only knows how to make the call.
 
 import { config } from '../config'
-import type { GesturesResponse, HealthResponse } from '../types'
+import type { GesturesResponse, HealthResponse, ModelInfoResponse } from '../types'
 
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${config.apiBaseUrl}${path}`, { signal })
@@ -21,4 +21,9 @@ export function fetchHealth(signal?: AbortSignal): Promise<HealthResponse> {
 /** GET /gestures - the list the Gesture Guide is built from. */
 export function fetchGestures(signal?: AbortSignal): Promise<GesturesResponse> {
   return getJson<GesturesResponse>('/gestures', signal)
+}
+
+/** GET /model - the rule-vs-ML comparison report for the Model page. */
+export function fetchModelInfo(signal?: AbortSignal): Promise<ModelInfoResponse> {
+  return getJson<ModelInfoResponse>('/model', signal)
 }

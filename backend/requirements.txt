@@ -10,3 +10,8 @@ uvicorn[standard]==0.34.0
 # (imported as cv2) and constrains numpy to the 1.26 line.
 mediapipe==0.10.21
 numpy==1.26.4
+
+# Machine-learning classifier (Phase 7). The trained model is a scikit-learn
+# pipeline loaded from a .joblib file at startup when GESTUREFLOW_CLASSIFIER=ml.
+scikit-learn==1.6.1
+joblib==1.4.2

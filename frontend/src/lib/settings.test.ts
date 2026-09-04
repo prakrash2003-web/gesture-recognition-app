@@ -39,4 +39,11 @@ describe('normalizeSettings', () => {
     expect(result.targetFps).toBe(FPS_RANGE.max)
     expect(result.sensitivity).toBe(DEFAULT_SETTINGS.sensitivity)
   })
+
+  it('accepts a valid classifier and rejects anything else', () => {
+    expect(normalizeSettings({ classifier: 'ml' }).classifier).toBe('ml')
+    expect(normalizeSettings({ classifier: 'wat' }).classifier).toBe(
+      DEFAULT_SETTINGS.classifier,
+    )
+  })
 })

@@ -156,3 +156,35 @@ second and never has two captures in flight at once.
 
 **Trade-off:** the backend classifies a slightly soft 320 px image. Acceptable — MediaPipe is robust
 at that size and the six gestures are coarse.
+
+---
+
+## 10. The ML classifier: engineered features, a model bake-off, and a rule baseline kept
+
+**Decision:** Phase 7 adds an optional scikit-learn classifier. It uses **engineered geometric
+features** (25 of them: per-finger extension ratios and joint angles, inter-fingertip distances,
+tip heights, spread), NOT the raw 63 landmark coordinates. Training compares a most-frequent
+baseline, logistic regression, a random forest, and an RBF SVM, and also scores the existing
+rule-based classifier on the same held-out test set. The rule-based classifier stays the default;
+ML is opt-in via `GESTUREFLOW_CLASSIFIER=ml` or the Live page's Settings.
+
+**Why engineered features, not raw coordinates:**
+- rotation/scale tolerant, so a few hundred samples generalize; raw coords would need far more data
+- every feature is one explainable sentence — important for talking through the project
+- they mirror what the rule-based classifier reasons about, so the comparison is apples-to-apples
+
+**Why a bake-off, not one model:** picking a model *because you measured* (macro-F1 on a
+session-grouped split) is the point of the exercise. The split is **by recording session**
+(`GroupShuffleSplit`) so near-identical consecutive frames can't leak between train and test — the
+single most common way hand-gesture accuracy numbers get inflated.
+
+**Why keep the rule-based classifier:** it needs zero data, it is the honest baseline the ML model
+must beat, and it is the fallback when no model file is present (fresh clone, CI, or before the user
+has collected data). The `feature_version` field in the saved model is checked on load so a stale
+model is rejected rather than silently mispredicting.
+
+**Data:** `scripts/record_fixtures.py` writes normalized landmarks (never images) to a per-session
+CSV. Model `.joblib` files are git-ignored and regenerated with `python -m ml.train`; only the small
+`ml/reports/comparison.json` is committed. The committed report is currently from **synthetic**
+hands (marked `provisional: true`) — enough to verify the whole pipeline; it is replaced the moment
+real data is trained.

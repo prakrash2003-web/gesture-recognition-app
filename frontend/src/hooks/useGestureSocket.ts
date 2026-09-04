@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { config } from '../config'
-import type { FrameResultMessage, ReadyMessage, ServerMessage } from '../types'
+import type {
+  ClassifierKind,
+  FrameResultMessage,
+  ReadyMessage,
+  ServerMessage,
+} from '../types'
 
 // Owns the WebSocket to the backend's /ws endpoint.
 //
@@ -31,6 +36,7 @@ interface UseGestureSocketOptions {
   captureFrame: () => Promise<Blob | null>
   targetFps?: number
   minConfidence?: number
+  classifier?: ClassifierKind
 }
 
 interface UseGestureSocketResult {
@@ -51,6 +57,7 @@ export function useGestureSocket({
   captureFrame,
   targetFps,
   minConfidence,
+  classifier,
 }: UseGestureSocketOptions): UseGestureSocketResult {
   const [status, setStatus] = useState<SocketStatus>('idle')
   const [ready, setReady] = useState<ReadyMessage | null>(null)
@@ -61,25 +68,31 @@ export function useGestureSocket({
   const captureRef = useRef(captureFrame)
   const fpsRef = useRef(targetFps)
   const minConfRef = useRef(minConfidence)
+  const classifierRef = useRef(classifier)
   useEffect(() => {
     captureRef.current = captureFrame
     fpsRef.current = targetFps
     minConfRef.current = minConfidence
-  }, [captureFrame, targetFps, minConfidence])
+    classifierRef.current = classifier
+  }, [captureFrame, targetFps, minConfidence, classifier])
 
   const socketRef = useRef<WebSocket | null>(null)
 
-  const sendConfig = useCallback((value: number) => {
+  const sendConfig = useCallback((payload: Record<string, unknown>) => {
     const ws = socketRef.current
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'config', min_confidence: value }))
+      ws.send(JSON.stringify({ type: 'config', ...payload }))
     }
   }, [])
 
-  // Push a threshold change to an already-open socket.
+  // Push a threshold or engine change to an already-open socket.
   useEffect(() => {
-    if (minConfidence != null) sendConfig(minConfidence)
+    if (minConfidence != null) sendConfig({ min_confidence: minConfidence })
   }, [minConfidence, sendConfig])
+
+  useEffect(() => {
+    if (classifier != null) sendConfig({ classifier })
+  }, [classifier, sendConfig])
 
   useEffect(() => {
     if (!enabled) return
@@ -135,7 +148,10 @@ export function useGestureSocket({
         readySnapshot = message
         setReady(message)
         setStatus('live')
-        if (minConfRef.current != null) sendConfig(minConfRef.current)
+        const initial: Record<string, unknown> = {}
+        if (minConfRef.current != null) initial.min_confidence = minConfRef.current
+        if (classifierRef.current != null) initial.classifier = classifierRef.current
+        if (Object.keys(initial).length > 0) sendConfig(initial)
         stopSendLoop()
         tick()
       } else if (message.type === 'result') {

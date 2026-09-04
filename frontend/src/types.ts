@@ -21,12 +21,59 @@ export interface GesturesResponse {
   gestures: Gesture[]
 }
 
+export type ClassifierKind = 'rule' | 'ml'
+
+// --- Model comparison (GET /model) -------------------------------------------
+
+export interface ClassMetrics {
+  precision: number
+  recall: number
+  f1: number
+  support: number
+}
+
+export interface ModelMetrics {
+  accuracy: number
+  precision_macro: number
+  recall_macro: number
+  f1_macro: number
+  per_class: Record<string, ClassMetrics>
+  confusion_matrix: number[][]
+  confusion_labels: string[]
+  cv_f1_macro_mean?: number
+  cv_f1_macro_std?: number
+}
+
+export interface ModelReport {
+  generated_at: string
+  dataset: 'synthetic' | 'real' | string
+  provisional: boolean
+  sklearn_version: string
+  n_samples: number
+  n_train: number
+  n_test: number
+  split: string
+  labels: string[]
+  selected_model: string
+  models: Record<string, ModelMetrics>
+  notes: string[]
+}
+
+export interface ModelInfoResponse {
+  default_classifier: ClassifierKind
+  ml_available: boolean
+  report: ModelReport | null
+}
+
 // --- WebSocket messages (server -> client) ------------------------------------
 
 export interface ReadyMessage {
   type: 'ready'
   gestures: Gesture[]
   recommended_fps: number
+  min_confidence: number
+  classifier: ClassifierKind
+  ml_available: boolean
 }
 
 export interface FrameResultMessage {
