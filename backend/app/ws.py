@@ -29,7 +29,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
-from app.config import CLASSIFIER, MODEL_PATH
+from app.config import ALLOWED_ORIGINS, CLASSIFIER, MODEL_PATH, WS_CHECK_ORIGIN
 from app.gestures import SUPPORTED_GESTURES
 from app.schemas import ConfigMessage, ErrorMessage, FrameResultMessage, ReadyMessage
 from app.vision.decode import FrameDecodeError
@@ -42,6 +42,18 @@ _RECOMMENDED_FPS = 10
 
 def _start_classifier() -> str:
     return "ml" if CLASSIFIER == "ml" else "rule"
+
+
+def _origin_allowed(websocket: WebSocket) -> bool:
+    """CORS middleware does not cover WebSockets, so we check the Origin here.
+
+    A browser always sends `Origin`; non-browser clients (our smoke script) send
+    none and are allowed. A present-but-unlisted origin is rejected.
+    """
+    if not WS_CHECK_ORIGIN:
+        return True
+    origin = websocket.headers.get("origin")
+    return origin is None or origin in ALLOWED_ORIGINS
 
 
 @dataclass
@@ -165,6 +177,10 @@ async def _safe_send(
 
 @router.websocket("/ws")
 async def gesture_socket(websocket: WebSocket) -> None:
+    if not _origin_allowed(websocket):
+        await websocket.close(code=1008)  # policy violation
+        return
+
     await websocket.accept()
 
     pipeline: GesturePipeline = await run_in_threadpool(

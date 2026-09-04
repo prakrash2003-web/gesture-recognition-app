@@ -20,9 +20,20 @@ def _split_csv(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-# Browser origins allowed to call this API. The frontend dev server runs on
-# :5173; the deployed frontend URL is added via the env var in Phase 8.
+# Browser origins allowed to call this API (REST CORS *and* the WebSocket origin
+# check). The frontend dev server runs on :5173; in production set this to the
+# deployed frontend URL, e.g. GESTUREFLOW_ALLOWED_ORIGINS=https://gestureflow.vercel.app
 ALLOWED_ORIGINS: list[str] = _split_csv(os.getenv("GESTUREFLOW_ALLOWED_ORIGINS", _DEFAULT_ORIGINS))
+
+# Reject WebSocket upgrades whose Origin header is not in ALLOWED_ORIGINS. On by
+# default; set GESTUREFLOW_WS_ALLOW_ANY_ORIGIN=1 only for local tooling that sends
+# no Origin (e.g. scripts/ws_smoke.py). Requests with no Origin are always allowed
+# (non-browser clients); browsers always send one.
+WS_CHECK_ORIGIN: bool = os.getenv("GESTUREFLOW_WS_ALLOW_ANY_ORIGIN", "0").strip() not in {
+    "1",
+    "true",
+    "yes",
+}
 
 # Which gesture classifier to start with: "rule" (hand-written baseline) or "ml"
 # (trained scikit-learn model). Can also be switched per-connection over the

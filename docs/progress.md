@@ -13,7 +13,7 @@ Roadmap phases 0-10 are described in `docs/decisions.md` and the chat plan.
 | 5 | Connect end-to-end: webcam capture → frame throttle → WS → overlay + gesture card | done (`8c9b254`) |
 | 6 | Robustness/UX: settings, Recharts dashboard, gesture history, error/reconnect UX, a11y | done (`53aafb5`) |
 | 7 | ML upgrade: dataset format, feature set, training + eval + comparison, backend switch, Model page | done — real model trained (2258 samples / 2 sessions, logreg selected, test F1 0.954) |
-| 8 | Deployment: backend Docker → Hugging Face Spaces, frontend → Vercel (**needs user accounts/secrets**) | next |
+| 8 | Deployment: backend Docker → Render/HF Spaces, frontend → Vercel | scaffolding done (Dockerfile, .dockerignore, vercel.json, WS origin check, DEPLOYMENT.md); **actual deploy needs user's Render/HF + Vercel accounts** |
 | 9 | Polish + docs: full README, screenshots, architecture diagram, a11y/perf pass | todo |
 | 10 | Optional gesture-driven demo interaction | todo |
 | — | CV/interview prep material | todo |
@@ -36,9 +36,17 @@ Roadmap phases 0-10 are described in `docs/decisions.md` and the chat plan.
 - Browser-only paths (getUserMedia, canvas.toBlob, browser WebSocket) are covered
   by mocked unit tests, NOT a real camera. Transport verified live: preview build
   serves, REST CORS header present, WS handshake returns `ready`.
-- TODO Phase 8: the `/ws` endpoint does not yet validate the browser `Origin`
-  header (Starlette CORS middleware doesn't cover WebSockets). Add an allowlist
-  check before deploying.
+- Phase 8 prep (2026-09-04): `/ws` now validates the browser `Origin` against
+  `GESTUREFLOW_ALLOWED_ORIGINS` (close 1008); no-Origin clients still allowed;
+  `GESTUREFLOW_WS_ALLOW_ANY_ORIGIN=1` disables it. Root `Dockerfile` +
+  `.dockerignore` build the backend (runtime deps only, model + report baked in,
+  `libgl1`/`libglib2.0-0` for OpenCV). `frontend/vercel.json` = Vite + SPA
+  rewrite. The 4 KB real `gesture_clf.joblib` is now committed (un-ignored) so
+  git-based deploys have it. Full runbook: `docs/DEPLOYMENT.md`.
+- Phase 8 blockers (need the user): create Render (or HF Spaces) + Vercel
+  accounts, set env vars, trigger the deploys, then update
+  `GESTUREFLOW_ALLOWED_ORIGINS` to the real Vercel URL. Optional: install Docker
+  Desktop to test the image locally first.
 - Phase 6: settings live in `useSettings` context (localStorage), session data in
   `useSessionRecorder` context; both wrap the app in `main.tsx`. Sensitivity maps
   to the backend classifier threshold via `sensitivityToMinConfidence`, pushed to

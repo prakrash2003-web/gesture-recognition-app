@@ -1,0 +1,25 @@
+# Keep the backend image small: only app/, ml/models/, ml/reports/ and
+# requirements.txt are needed at runtime (see Dockerfile).
+
+.git
+.github
+.venv
+frontend
+docs
+node_modules
+
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+
+backend/tests
+backend/scripts
+backend/ml/data
+backend/requirements-dev.txt
+backend/pyproject.toml
+
+*.md
+!backend/ml/reports/*.md

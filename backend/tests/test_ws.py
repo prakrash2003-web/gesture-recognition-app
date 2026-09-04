@@ -8,7 +8,10 @@ GesturePipeline (MediaPipe loads from the bundled model - no network).
 
 import cv2
 import numpy as np
+import pytest
+from starlette.websockets import WebSocketDisconnect
 
+from app.config import ALLOWED_ORIGINS
 from app.gestures import SUPPORTED_GESTURES
 
 
@@ -103,3 +106,21 @@ def test_switching_to_ml_without_a_model_reports_an_error_and_keeps_going(client
         kinds = {m["type"] for m in messages}
         assert "error" in kinds  # ML unavailable
         assert "result" in kinds  # stream continues on rule-based
+
+
+def test_allowed_origin_can_connect(client):
+    origin = ALLOWED_ORIGINS[0]
+    with client.websocket_connect("/ws", headers={"origin": origin}) as ws:
+        assert ws.receive_json()["type"] == "ready"
+
+
+def test_disallowed_origin_is_rejected(client):
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect("/ws", headers={"origin": "https://evil.example"}) as ws:
+            ws.receive_json()
+
+
+def test_missing_origin_is_allowed(client):
+    # Non-browser clients (our smoke script, tests) send no Origin header.
+    with client.websocket_connect("/ws") as ws:
+        assert ws.receive_json()["type"] == "ready"

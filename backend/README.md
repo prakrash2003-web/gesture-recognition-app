@@ -41,6 +41,10 @@ Each connection gets its own `GesturePipeline`. Only the newest frame is
 processed; frames that arrive while one is in flight are dropped (`frames_dropped`
 reports how many). MediaPipe runs in a worker thread so it never blocks the server.
 
+The `/ws` endpoint rejects (close code 1008) browser connections whose `Origin`
+is not in `GESTUREFLOW_ALLOWED_ORIGINS`; clients that send no `Origin` (scripts)
+are allowed. Set `GESTUREFLOW_WS_ALLOW_ANY_ORIGIN=1` to disable the check.
+
 Manual check against a live server: `python scripts/ws_smoke.py`.
 
 ## Layout

@@ -33,14 +33,17 @@ Thumbs.db
 desktop.ini
 
 # ---------- ML data / models (Phase 7) ----------
-# Collected landmark datasets (webcam captures) and trained model files are not
-# committed: datasets are personal, models are regenerated with `python -m ml.train`.
-# The small metric reports in backend/ml/reports/ ARE committed.
+# Collected landmark datasets (webcam captures) stay local - personal, and
+# regenerable. The metric reports in backend/ml/reports/ are committed.
+# The single shipped model IS committed (4 KB, real, needed by the deployed
+# backend); other/experimental .joblib files are ignored.
 backend/ml/data/*
 !backend/ml/data/.gitkeep
 backend/ml/models/*
 !backend/ml/models/.gitkeep
+!backend/ml/models/gesture_clf.joblib
 *.joblib
+!backend/ml/models/gesture_clf.joblib
 
 # ---------- Build / misc ----------
 *.log

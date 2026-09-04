@@ -9,6 +9,7 @@
 *.gif binary
 *.ico binary
 *.pkl binary
+*.joblib binary
 *.onnx binary
 *.tflite binary
 *.mp4 binary
